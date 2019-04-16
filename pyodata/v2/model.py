@@ -1985,7 +1985,7 @@ NAMESPACES = {
     'm': 'http://schemas.microsoft.com/ado/2007/08/dataservices/metadata',
     'sap': 'http://www.sap.com/Protocols/SAPData',
     'edmx': 'http://schemas.microsoft.com/ado/2007/06/edmx',
-    'edm': 'http://schemas.microsoft.com/ado/2008/09/edm'
+    'edm': 'http://schemas.microsoft.com/ado/2009/11/edm'
 }
 
 
