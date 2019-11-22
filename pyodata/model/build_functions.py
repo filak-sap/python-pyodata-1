@@ -11,7 +11,7 @@ import pyodata.model.elements as elements
 
 # pylint: disable=cyclic-import
 # When using `import xxx as yyy` it is not a problem and we need this dependency
-import pyodata.v4 as v4
+import pyodata.v4 as odata_v4
 
 
 def modlog():
@@ -187,9 +187,9 @@ def build_entity_set(config, entity_set_node):
     req_filter = elements.sap_attribute_get_bool(entity_set_node, 'requires-filter', False)
     label = elements.sap_attribute_get_string(entity_set_node, 'label')
 
-    if config.odata_version == v4.ODataV4:
-        return v4.v4_elements.EntitySet(name, et_info, addressable, creatable, updatable, deletable, searchable,
-                                        countable, pageable, topable, req_filter, label, nav_prop_bins)
+    if config.odata_version == odata_v4.ODataV4:
+        return odata_v4.v4_elements.EntitySet(name, et_info, addressable, creatable, updatable, deletable, searchable,
+                                              countable, pageable, topable, req_filter, label, nav_prop_bins)
 
     return elements.EntitySet(name, et_info, addressable, creatable, updatable, deletable, searchable, countable,
                               pageable, topable, req_filter, label)
