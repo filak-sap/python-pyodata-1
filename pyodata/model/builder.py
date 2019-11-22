@@ -6,7 +6,7 @@ from lxml import etree
 import pyodata.config as pyodata
 import pyodata.exceptions as exceptions
 import pyodata.model.elements as elements
-import pyodata.v2 as v2
+import pyodata.v2 as odata_v2
 
 
 ANNOTATION_NAMESPACES = {
@@ -44,7 +44,7 @@ class MetadataBuilder:
         self._xml = xml
 
         if config is None:
-            config = pyodata.Config(v2.ODataV2)
+            config = pyodata.Config(odata_v2.ODataV2)
         self._config = config
 
     # pylint: disable=missing-docstring
@@ -140,7 +140,7 @@ def schema_from_xml(metadata_xml, namespaces=None):
     meta = MetadataBuilder(
         metadata_xml,
         config=pyodata.Config(
-            v2.ODataV2,
+            odata_v2.ODataV2,
             xml_namespaces=namespaces,
         ))
 
