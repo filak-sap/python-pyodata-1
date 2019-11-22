@@ -6,7 +6,7 @@
 import itertools
 import copy
 
-import pyodata.config as pyodata
+import pyodata.config as conf
 import pyodata.exceptions as exceptions
 import pyodata.policies as policies
 
@@ -17,7 +17,7 @@ import pyodata.v4.elements as v4_elements
 # pylint: disable=protected-access,too-many-locals,too-many-branches,too-many-statements
 # While building schema it is necessary to set few attributes which in the rest of the application should remain
 # constant. As for now, splitting build_schema into sub-functions would not add any benefits.
-def build_schema(config: pyodata.Config, schema_nodes):
+def build_schema(config: conf.Config, schema_nodes):
     schema = elements.Schema(config)
 
     # Parse Schema nodes by parts to get over the problem of not-yet known
@@ -125,7 +125,7 @@ def build_schema(config: pyodata.Config, schema_nodes):
     return schema
 
 
-def build_navigation_type_property(config: pyodata.Config, node):
+def build_navigation_type_property(config: conf.Config, node):
     partner = elements.Types.parse_type_name(node.get('Partner')) if node.get('Partner') else None
     ref_cons = []
 
@@ -141,16 +141,16 @@ def build_navigation_type_property(config: pyodata.Config, node):
         ref_cons)
 
 
-def build_navigation_property_binding(config: pyodata.Config, node, et_info):
+def build_navigation_property_binding(config: conf.Config, node, et_info):
     return v4_elements.NavigationPropertyBinding(v4_elements.to_path_info(node.get('Path'), et_info),
                                                  node.get('Target'))
 
 
-def build_unit_annotation(config: pyodata.Config, target: elements.Typ, annotation_node):
+def build_unit_annotation(config: conf.Config, target: elements.Typ, annotation_node):
     target.annotation = v4_elements.Unit(f'self.{target.name}', annotation_node.get('String'))
 
 
-def build_type_definition(config: pyodata.Config, node):
+def build_type_definition(config: conf.Config, node):
     typ = copy.deepcopy(elements.Types.from_name(node.get('UnderlyingType'), config))
     typ.name = node.get('Name')
 

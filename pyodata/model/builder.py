@@ -3,7 +3,7 @@
 import io
 from lxml import etree
 
-import pyodata.config as pyodata
+import pyodata.config as conf
 import pyodata.exceptions as exceptions
 import pyodata.model.elements as elements
 import pyodata.v2 as odata_v2
@@ -44,12 +44,12 @@ class MetadataBuilder:
         self._xml = xml
 
         if config is None:
-            config = pyodata.Config(odata_v2.ODataV2)
+            config = conf.Config(odata_v2.ODataV2)
         self._config = config
 
     # pylint: disable=missing-docstring
     @property
-    def config(self) -> pyodata.Config:
+    def config(self) -> conf.Config:
         return self._config
 
     def build(self):
@@ -103,7 +103,7 @@ class MetadataBuilder:
         return elements.build_element(elements.Schema, self._config, schema_nodes=edm_schemas)
 
     @staticmethod
-    def get_aliases(edmx, config: pyodata.Config):
+    def get_aliases(edmx, config: conf.Config):
         """Get all aliases"""
 
         # aliases = collections.defaultdict(set)
@@ -121,7 +121,7 @@ class MetadataBuilder:
         return aliases
 
     @staticmethod
-    def update_alias(aliases, config: pyodata.Config):
+    def update_alias(aliases, config: conf.Config):
         """Update config with aliases"""
         config.aliases = aliases
         helper_direction_keys = list(config.sap_value_helper_directions.keys())
@@ -139,7 +139,7 @@ def schema_from_xml(metadata_xml, namespaces=None):
 
     meta = MetadataBuilder(
         metadata_xml,
-        config=pyodata.Config(
+        config=conf.Config(
             odata_v2.ODataV2,
             xml_namespaces=namespaces,
         ))

@@ -4,7 +4,7 @@
 import copy
 import logging
 
-import pyodata.config as pyodata
+import pyodata.config as conf
 import pyodata.policies as policies
 import pyodata.exceptions as exceptions
 import pyodata.model.elements as elements
@@ -18,7 +18,7 @@ def modlog():
     return logging.getLogger("callbacks")
 
 
-def build_struct_type_property(config: pyodata.Config, entity_type_property_node):
+def build_struct_type_property(config: conf.Config, entity_type_property_node):
     return elements.StructTypeProperty(
         entity_type_property_node.get('Name'),
         elements.Types.parse_type_name(entity_type_property_node.get('Type')),
@@ -42,7 +42,7 @@ def build_struct_type_property(config: pyodata.Config, entity_type_property_node
 
 
 # pylint: disable=protected-access
-def build_struct_type(config: pyodata.Config, type_node, typ, schema=None):
+def build_struct_type(config: conf.Config, type_node, typ, schema=None):
     name = type_node.get('Name')
     base_type = type_node.get('BaseType')
 
@@ -80,7 +80,7 @@ def build_struct_type(config: pyodata.Config, type_node, typ, schema=None):
     return stype
 
 
-def build_complex_type(config: pyodata.Config, type_node, schema=None):
+def build_complex_type(config: conf.Config, type_node, schema=None):
     try:
         return elements.build_element(elements.StructType, config, type_node=type_node, typ=elements.ComplexType,
                                       schema=schema)
@@ -90,7 +90,7 @@ def build_complex_type(config: pyodata.Config, type_node, schema=None):
 
 
 # pylint: disable=protected-access
-def build_entity_type(config: pyodata.Config, type_node, schema=None):
+def build_entity_type(config: conf.Config, type_node, schema=None):
     try:
         etype = elements.build_element(elements.StructType, config, type_node=type_node, typ=elements.EntityType,
                                        schema=schema)
@@ -113,7 +113,7 @@ def build_entity_type(config: pyodata.Config, type_node, schema=None):
 
 
 # pylint: disable=protected-access, too-many-locals
-def build_enum_type(config: pyodata.Config, type_node, namespace):
+def build_enum_type(config: conf.Config, type_node, namespace):
     try:
         ename = type_node.get('Name')
         is_flags = type_node.get('IsFlags')
@@ -263,7 +263,7 @@ def build_value_helper_parameter(config, value_help_parameter_node):
 
 
 # pylint: disable=too-many-locals
-def build_function_import(config: pyodata.Config, function_import_node):
+def build_function_import(config: conf.Config, function_import_node):
     name = function_import_node.get('Name')
     entity_set = function_import_node.get('EntitySet')
     http_method = elements.metadata_attribute_get(function_import_node, 'HttpMethod')

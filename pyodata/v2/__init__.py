@@ -3,7 +3,7 @@
 import logging
 from typing import List
 
-import pyodata.config as pyodata
+import pyodata.config as conf
 
 import pyodata.model.type_traits as base_traits
 import pyodata.v2.type_traits as v2_traits
@@ -20,7 +20,7 @@ def modlog():
     return logging.getLogger("v2")
 
 
-class ODataV2(pyodata.ODATAVersion):
+class ODataV2(conf.ODATAVersion):
     """ Definition of OData V2 """
 
     @staticmethod

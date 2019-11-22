@@ -2,7 +2,7 @@
 
 from typing import List
 
-import pyodata.config as pyodata
+import pyodata.config as conf
 
 import pyodata.model.elements as base_elements
 import pyodata.v4.elements as v4_elements
@@ -14,7 +14,7 @@ import pyodata.model.build_functions as base_build_functions
 import pyodata.v4.build_functions as v4_build_functions
 
 
-class ODataV4(pyodata.ODATAVersion):
+class ODataV4(conf.ODATAVersion):
     """ Definition of OData V4 """
 
     @staticmethod

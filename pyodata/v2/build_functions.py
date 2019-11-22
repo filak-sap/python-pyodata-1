@@ -7,7 +7,7 @@ import itertools
 import logging
 from typing import List
 
-import pyodata.config as pyodata
+import pyodata.config as conf
 import pyodata.exceptions as exceptions
 import pyodata.policies as policies
 
@@ -23,7 +23,7 @@ def modlog():
 # pylint: disable=protected-access,too-many-locals, too-many-branches,too-many-statements
 # While building schema it is necessary to set few attributes which in the rest of the application should remain
 # constant. As for now, splitting build_schema into sub-functions would not add any benefits.
-def build_schema(config: pyodata.Config, schema_nodes):
+def build_schema(config: conf.Config, schema_nodes):
     schema = v2_elements.Schema(config)
 
     # Parse Schema nodes by parts to get over the problem of not-yet known
@@ -205,12 +205,12 @@ def build_schema(config: pyodata.Config, schema_nodes):
     return schema
 
 
-def build_navigation_type_property(config: pyodata.Config, node):
+def build_navigation_type_property(config: conf.Config, node):
     return v2_elements.NavigationTypeProperty(
         node.get('Name'), node.get('FromRole'), node.get('ToRole'), elements.Identifier.parse(node.get('Relationship')))
 
 
-def build_end_role(config: pyodata.Config, end_role_node):
+def build_end_role(config: conf.Config, end_role_node):
     entity_type_info = elements.Types.parse_type_name(end_role_node.get('Type'))
     multiplicity = end_role_node.get('Multiplicity')
     role = end_role_node.get('Role')
@@ -219,7 +219,7 @@ def build_end_role(config: pyodata.Config, end_role_node):
 
 
 # pylint: disable=protected-access
-def build_association(config: pyodata.Config, association_node):
+def build_association(config: conf.Config, association_node):
     name = association_node.get('Name')
     association = v2_elements.Association(name)
 
@@ -247,14 +247,14 @@ def build_association(config: pyodata.Config, association_node):
     return association
 
 
-def build_association_set_end_role(config: pyodata.Config, end_node):
+def build_association_set_end_role(config: conf.Config, end_node):
     role = end_node.get('Role')
     entity_set = end_node.get('EntitySet')
 
     return v2_elements.AssociationSetEndRole(role, entity_set)
 
 
-def build_association_set(config: pyodata.Config, association_set_node):
+def build_association_set(config: conf.Config, association_set_node):
     end_roles: List[v2_elements.AssociationSetEndRole] = []
     name = association_set_node.get('Name')
     association = elements.Identifier.parse(association_set_node.get('Association'))
@@ -269,7 +269,7 @@ def build_association_set(config: pyodata.Config, association_set_node):
     return v2_elements.AssociationSet(name, association.name, association.namespace, end_roles)
 
 
-def build_referential_constraint(config: pyodata.Config, referential_constraint_node):
+def build_referential_constraint(config: conf.Config, referential_constraint_node):
     principal = referential_constraint_node.xpath('edm:Principal', namespaces=config.namespaces)
     if len(principal) != 1:
         raise RuntimeError('Referential constraint must contain exactly one principal element')

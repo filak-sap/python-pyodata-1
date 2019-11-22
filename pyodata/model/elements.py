@@ -9,7 +9,7 @@ from enum import Enum
 from typing import Union
 
 
-import pyodata.config as pyodata
+import pyodata.config as conf
 import pyodata.policies as policies
 import pyodata.exceptions as exceptions
 import pyodata.model.type_traits as base_traits
@@ -23,7 +23,7 @@ def modlog():
     return logging.getLogger("Elements")
 
 
-def build_element(element_name: Union[str, type], config: pyodata.Config, **kwargs):
+def build_element(element_name: Union[str, type], config: conf.Config, **kwargs):
     """
     This function is responsible for resolving which implementation is to be called for parsing EDM element. It's a
     primitive implementation of dynamic dispatch, thus there exist table where all supported elements are assigned
@@ -52,7 +52,7 @@ def build_element(element_name: Union[str, type], config: pyodata.Config, **kwar
     raise exceptions.PyODataParserError(f'{element_name} is unsupported in {config.odata_version.__name__}')
 
 
-def build_annotation(term: str, config: pyodata.Config, **kwargs):
+def build_annotation(term: str, config: conf.Config, **kwargs):
     """
     Similarly to build_element this function purpoas is to resolve build function for annotations. There are two
     main differences:
@@ -143,7 +143,7 @@ class Types:
     """
 
     @staticmethod
-    def register_type(typ: 'Typ', config: pyodata.Config):
+    def register_type(typ: 'Typ', config: conf.Config):
         """Add new type to the ODATA version type repository as well as its collection variant"""
 
         o_version = config.odata_version
@@ -159,7 +159,7 @@ class Types:
             o_version.Types[collection_name] = collection_typ
 
     @staticmethod
-    def from_name(name, config: pyodata.Config) -> 'Typ':
+    def from_name(name, config: conf.Config) -> 'Typ':
         o_version = config.odata_version
 
         # build types hierarchy on first use (lazy creation)
@@ -426,7 +426,7 @@ class Schema:
             except KeyError:
                 raise KeyError('There is no Schema Namespace {}'.format(key))
 
-    def __init__(self, config: pyodata.Config):
+    def __init__(self, config: conf.Config):
         super(Schema, self).__init__()
 
         self._decls = Schema.Declarations()
