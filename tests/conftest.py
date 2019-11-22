@@ -5,7 +5,7 @@ import pytest
 
 import pyodata.config
 import pyodata.model.builder as builder
-import pyodata.v4 as v4
+import pyodata.v4 as odata_v4
 
 
 @pytest.fixture
@@ -131,7 +131,7 @@ def schema(metadata_v2):
 def schema_v4(metadata_v4):
     meta = builder.MetadataBuilder(
         metadata_v4,
-        config=pyodata.config.Config(v4.ODataV4)
+        config=pyodata.config.Config(odata_v4.ODataV4)
     )
 
     return meta.build()
