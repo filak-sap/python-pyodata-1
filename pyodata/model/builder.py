@@ -3,9 +3,9 @@
 import io
 from lxml import etree
 
-from pyodata.config import Config
-from pyodata.exceptions import PyODataParserError
-from pyodata.model.elements import ValueHelperParameter, Schema, build_element
+import pyodata.config as pyodata
+import pyodata.exceptions as exceptions
+import pyodata.model.elements as elements
 import pyodata.v2 as v2
 
 
@@ -15,11 +15,11 @@ ANNOTATION_NAMESPACES = {
 }
 
 SAP_VALUE_HELPER_DIRECTIONS = {
-    'com.sap.vocabularies.Common.v1.ValueListParameterIn': ValueHelperParameter.Direction.In,
-    'com.sap.vocabularies.Common.v1.ValueListParameterInOut': ValueHelperParameter.Direction.InOut,
-    'com.sap.vocabularies.Common.v1.ValueListParameterOut': ValueHelperParameter.Direction.Out,
-    'com.sap.vocabularies.Common.v1.ValueListParameterDisplayOnly': ValueHelperParameter.Direction.DisplayOnly,
-    'com.sap.vocabularies.Common.v1.ValueListParameterFilterOnly': ValueHelperParameter.Direction.FilterOnly
+    'com.sap.vocabularies.Common.v1.ValueListParameterIn': elements.ValueHelperParameter.Direction.In,
+    'com.sap.vocabularies.Common.v1.ValueListParameterInOut': elements.ValueHelperParameter.Direction.InOut,
+    'com.sap.vocabularies.Common.v1.ValueListParameterOut': elements.ValueHelperParameter.Direction.Out,
+    'com.sap.vocabularies.Common.v1.ValueListParameterDisplayOnly': elements.ValueHelperParameter.Direction.DisplayOnly,
+    'com.sap.vocabularies.Common.v1.ValueListParameterFilterOnly': elements.ValueHelperParameter.Direction.FilterOnly
 }
 
 
@@ -44,12 +44,12 @@ class MetadataBuilder:
         self._xml = xml
 
         if config is None:
-            config = Config(v2.ODataV2)
+            config = pyodata.Config(v2.ODataV2)
         self._config = config
 
     # pylint: disable=missing-docstring
     @property
-    def config(self) -> Config:
+    def config(self) -> pyodata.Config:
         return self._config
 
     def build(self):
@@ -69,18 +69,18 @@ class MetadataBuilder:
         try:
             dataservices = next((child for child in edmx if etree.QName(child.tag).localname == 'DataServices'))
         except StopIteration:
-            raise PyODataParserError('Metadata document is missing the element DataServices')
+            raise exceptions.PyODataParserError('Metadata document is missing the element DataServices')
 
         try:
             schema = next((child for child in dataservices if etree.QName(child.tag).localname == 'Schema'))
         except StopIteration:
-            raise PyODataParserError('Metadata document is missing the element Schema')
+            raise exceptions.PyODataParserError('Metadata document is missing the element Schema')
 
         if 'edmx' not in self._config.namespaces:
             namespace = etree.QName(edmx.tag).namespace
 
             if namespace not in self.EDMX_WHITELIST:
-                raise PyODataParserError(f'Unsupported Edmx namespace - {namespace}')
+                raise exceptions.PyODataParserError(f'Unsupported Edmx namespace - {namespace}')
 
             namespaces['edmx'] = namespace
 
@@ -88,7 +88,7 @@ class MetadataBuilder:
             namespace = etree.QName(schema.tag).namespace
 
             if namespace not in self.EDM_WHITELIST:
-                raise PyODataParserError(f'Unsupported Schema namespace - {namespace}')
+                raise exceptions.PyODataParserError(f'Unsupported Schema namespace - {namespace}')
 
             namespaces['edm'] = namespace
 
@@ -100,10 +100,10 @@ class MetadataBuilder:
         self.update_alias(self.get_aliases(xml, self._config), self._config)
 
         edm_schemas = xml.xpath('/edmx:Edmx/edmx:DataServices/edm:Schema', namespaces=self._config.namespaces)
-        return build_element(Schema, self._config, schema_nodes=edm_schemas)
+        return elements.build_element(elements.Schema, self._config, schema_nodes=edm_schemas)
 
     @staticmethod
-    def get_aliases(edmx, config: Config):
+    def get_aliases(edmx, config: pyodata.Config):
         """Get all aliases"""
 
         # aliases = collections.defaultdict(set)
@@ -121,7 +121,7 @@ class MetadataBuilder:
         return aliases
 
     @staticmethod
-    def update_alias(aliases, config: Config):
+    def update_alias(aliases, config: pyodata.Config):
         """Update config with aliases"""
         config.aliases = aliases
         helper_direction_keys = list(config.sap_value_helper_directions.keys())
@@ -139,7 +139,7 @@ def schema_from_xml(metadata_xml, namespaces=None):
 
     meta = MetadataBuilder(
         metadata_xml,
-        config=Config(
+        config=pyodata.Config(
             v2.ODataV2,
             xml_namespaces=namespaces,
         ))

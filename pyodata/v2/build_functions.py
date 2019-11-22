@@ -7,13 +7,12 @@ import itertools
 import logging
 from typing import List
 
-from pyodata.config import Config
-from pyodata.exceptions import PyODataParserError, PyODataModelError
-from pyodata.model.elements import EntityType, ComplexType, NullType, build_element, EntitySet, FunctionImport, Typ, \
-    Identifier, Types, build_annotation
-from pyodata.policies import ParserError
-from pyodata.v2.elements import AssociationSetEndRole, Association, AssociationSet, NavigationTypeProperty, EndRole, \
-    Schema, NullAssociation, ReferentialConstraint, PrincipalRole, DependentRole
+import pyodata.config as pyodata
+import pyodata.exceptions as exceptions
+import pyodata.policies as policies
+
+import pyodata.model.elements as elements
+import pyodata.v2.elements as v2_elements
 
 
 def modlog():
@@ -24,8 +23,8 @@ def modlog():
 # pylint: disable=protected-access,too-many-locals, too-many-branches,too-many-statements
 # While building schema it is necessary to set few attributes which in the rest of the application should remain
 # constant. As for now, splitting build_schema into sub-functions would not add any benefits.
-def build_schema(config: Config, schema_nodes):
-    schema = Schema(config)
+def build_schema(config: pyodata.Config, schema_nodes):
+    schema = v2_elements.Schema(config)
 
     # Parse Schema nodes by parts to get over the problem of not-yet known
     # entity types referenced by entity sets, function imports and
@@ -34,21 +33,23 @@ def build_schema(config: Config, schema_nodes):
     # First, process EnumType, EntityType and ComplexType nodes. They have almost no dependencies on other elements.
     for schema_node in schema_nodes:
         namespace = schema_node.get('Namespace')
-        decl = Schema.Declaration(namespace)
+        decl = v2_elements.Schema.Declaration(namespace)
         schema._decls[namespace] = decl
 
         for complex_type in schema_node.xpath('edm:ComplexType', namespaces=config.namespaces):
-            decl.add_complex_type(build_element(ComplexType, config, type_node=complex_type, schema=schema))
+            decl.add_complex_type(elements.build_element(elements.ComplexType, config, type_node=complex_type,
+                                                         schema=schema))
 
         for entity_type in schema_node.xpath('edm:EntityType', namespaces=config.namespaces):
-            decl.add_entity_type(build_element(EntityType, config, type_node=entity_type, schema=schema))
+            decl.add_entity_type(elements.build_element(elements.EntityType, config, type_node=entity_type,
+                                                        schema=schema))
 
     # resolve types of properties
     for stype in itertools.chain(schema.entity_types, schema.complex_types):
-        if isinstance(stype, NullType):
+        if isinstance(stype, elements.NullType):
             continue
 
-        if stype.kind == Typ.Kinds.Complex:
+        if stype.kind == elements.Typ.Kinds.Complex:
             # skip collections (no need to assign any types since type of collection
             # items is resolved separately
             if stype.is_collection:
@@ -57,9 +58,9 @@ def build_schema(config: Config, schema_nodes):
             for prop in stype.proprties():
                 try:
                     prop.typ = schema.get_type(prop.type_info)
-                except PyODataModelError as ex:
-                    config.err_policy(ParserError.PROPERTY).resolve(ex)
-                    prop.typ = NullType(prop.type_info.name)
+                except exceptions.PyODataModelError as ex:
+                    config.err_policy(policies.ParserError.PROPERTY).resolve(ex)
+                    prop.typ = elements.NullType(prop.type_info.name)
 
     # pylint: disable=too-many-nested-blocks
     # Then, process Associations nodes because they refer EntityTypes and
@@ -69,7 +70,7 @@ def build_schema(config: Config, schema_nodes):
         decl = schema._decls[namespace]
 
         for association in schema_node.xpath('edm:Association', namespaces=config.namespaces):
-            assoc = build_element(Association, config, association_node=association)
+            assoc = elements.build_element(v2_elements.Association, config, association_node=association)
             try:
                 for end_role in assoc.end_roles:
                     try:
@@ -81,7 +82,7 @@ def build_schema(config: Config, schema_nodes):
 
                         end_role.entity_type = etype
                     except KeyError:
-                        raise PyODataModelError(
+                        raise exceptions.PyODataModelError(
                             f'EntityType {end_role.entity_type_info.name} does not exist in Schema '
                             f'Namespace {end_role.entity_type_info.namespace}')
 
@@ -110,16 +111,16 @@ def build_schema(config: Config, schema_nodes):
                     role_name = dependent_role.name
                     entity_type_name = assoc.end_by_role(role_name).entity_type_name
                     schema.check_role_property_names(dependent_role, entity_type_name, namespace)
-            except (PyODataModelError, RuntimeError) as ex:
-                config.err_policy(ParserError.ASSOCIATION).resolve(ex)
-                decl.associations[assoc.name] = NullAssociation(assoc.name)
+            except (exceptions.PyODataModelError, RuntimeError) as ex:
+                config.err_policy(policies.ParserError.ASSOCIATION).resolve(ex)
+                decl.associations[assoc.name] = v2_elements.NullAssociation(assoc.name)
             else:
                 decl.associations[assoc.name] = assoc
 
     # resolve navigation properties
     for stype in schema.entity_types:
         # skip null type
-        if isinstance(stype, NullType):
+        if isinstance(stype, elements.NullType):
             continue
 
         # skip collections
@@ -131,8 +132,8 @@ def build_schema(config: Config, schema_nodes):
                 assoc = schema.association(nav_prop.association_info.name, nav_prop.association_info.namespace)
                 nav_prop.association = assoc
             except KeyError as ex:
-                config.err_policy(ParserError.ASSOCIATION).resolve(ex)
-                nav_prop.association = NullAssociation(nav_prop.association_info.name)
+                config.err_policy(policies.ParserError.ASSOCIATION).resolve(ex)
+                nav_prop.association = v2_elements.NullAssociation(nav_prop.association_info.name)
 
     # Then, process EntitySet, FunctionImport and AssociationSet nodes.
     for schema_node in schema_nodes:
@@ -140,13 +141,13 @@ def build_schema(config: Config, schema_nodes):
         decl = schema._decls[namespace]
 
         for entity_set in schema_node.xpath('edm:EntityContainer/edm:EntitySet', namespaces=config.namespaces):
-            eset = build_element(EntitySet, config, entity_set_node=entity_set)
+            eset = elements.build_element(elements.EntitySet, config, entity_set_node=entity_set)
             eset.entity_type = schema.entity_type(eset.entity_type_info[1], namespace=eset.entity_type_info[0])
             decl.entity_sets[eset.name] = eset
 
         for function_import in schema_node.xpath('edm:EntityContainer/edm:FunctionImport',
                                                  namespaces=config.namespaces):
-            efn = build_element(FunctionImport, config, function_import_node=function_import)
+            efn = elements.build_element(elements.FunctionImport, config, function_import_node=function_import)
 
             # complete type information for return type and parameters
             if efn.return_type_info is not None:
@@ -157,14 +158,15 @@ def build_schema(config: Config, schema_nodes):
 
         for association_set in schema_node.xpath('edm:EntityContainer/edm:AssociationSet',
                                                  namespaces=config.namespaces):
-            assoc_set = build_element(AssociationSet, config, association_set_node=association_set)
+            assoc_set = elements.build_element(v2_elements.AssociationSet, config, association_set_node=association_set)
             try:
                 try:
                     assoc_set.association_type = schema.association(assoc_set.association_type_name,
                                                                     assoc_set.association_type_namespace)
                 except KeyError:
-                    raise PyODataModelError(f'Association {assoc_set.association_type_name} does not exist in namespace'
-                                            f' {assoc_set.association_type_namespace}')
+                    raise exceptions.PyODataModelError(
+                        f'Association {assoc_set.association_type_name} does not exist in namespace '
+                        f'{assoc_set.association_type_namespace}')
 
                 for end in assoc_set.end_roles:
                     # Check if an entity set exists in the current scheme
@@ -173,15 +175,15 @@ def build_schema(config: Config, schema_nodes):
                         entity_set = schema.entity_set(end.entity_set_name, namespace)
                         end.entity_set = entity_set
                     except KeyError:
-                        raise PyODataModelError('EntitySet {} does not exist in Schema Namespace {}'
-                                                .format(end.entity_set_name, namespace))
+                        raise exceptions.PyODataModelError('EntitySet {} does not exist in Schema Namespace {}'
+                                                           .format(end.entity_set_name, namespace))
                     # Check if role is defined in Association
                     if assoc_set.association_type.end_by_role(end.role) is None:
-                        raise PyODataModelError('Role {} is not defined in association {}'
-                                                .format(end.role, assoc_set.association_type_name))
-            except (PyODataModelError, KeyError) as ex:
-                config.err_policy(ParserError.ASSOCIATION).resolve(ex)
-                decl.association_sets[assoc_set.name] = NullAssociation(assoc_set.name)
+                        raise exceptions.PyODataModelError('Role {} is not defined in association {}'
+                                                           .format(end.role, assoc_set.association_type_name))
+            except (exceptions.PyODataModelError, KeyError) as ex:
+                config.err_policy(policies.ParserError.ASSOCIATION).resolve(ex)
+                decl.association_sets[assoc_set.name] = v2_elements.NullAssociation(assoc_set.name)
             else:
                 decl.association_sets[assoc_set.name] = assoc_set
 
@@ -196,33 +198,33 @@ def build_schema(config: Config, schema_nodes):
             for annotation_node in annotation_group.xpath('edm:Annotation', namespaces=config.annotation_namespace):
 
                 try:
-                    build_annotation(annotation_node.get('Term'), config, target=target,
-                                     annotation_node=annotation_node, schema=schema)
-                except PyODataParserError as ex:
-                    config.err_policy(ParserError.ANNOTATION).resolve(ex)
+                    elements.build_annotation(annotation_node.get('Term'), config, target=target,
+                                              annotation_node=annotation_node, schema=schema)
+                except exceptions.PyODataParserError as ex:
+                    config.err_policy(policies.ParserError.ANNOTATION).resolve(ex)
     return schema
 
 
-def build_navigation_type_property(config: Config, node):
-    return NavigationTypeProperty(
-        node.get('Name'), node.get('FromRole'), node.get('ToRole'), Identifier.parse(node.get('Relationship')))
+def build_navigation_type_property(config: pyodata.Config, node):
+    return v2_elements.NavigationTypeProperty(
+        node.get('Name'), node.get('FromRole'), node.get('ToRole'), elements.Identifier.parse(node.get('Relationship')))
 
 
-def build_end_role(config: Config, end_role_node):
-    entity_type_info = Types.parse_type_name(end_role_node.get('Type'))
+def build_end_role(config: pyodata.Config, end_role_node):
+    entity_type_info = elements.Types.parse_type_name(end_role_node.get('Type'))
     multiplicity = end_role_node.get('Multiplicity')
     role = end_role_node.get('Role')
 
-    return EndRole(entity_type_info, multiplicity, role)
+    return v2_elements.EndRole(entity_type_info, multiplicity, role)
 
 
 # pylint: disable=protected-access
-def build_association(config: Config, association_node):
+def build_association(config: pyodata.Config, association_node):
     name = association_node.get('Name')
-    association = Association(name)
+    association = v2_elements.Association(name)
 
     for end in association_node.xpath('edm:End', namespaces=config.namespaces):
-        end_role = build_element(EndRole, config, end_role_node=end)
+        end_role = elements.build_element(v2_elements.EndRole, config, end_role_node=end)
         if end_role.entity_type_info is None:
             raise RuntimeError('End type is not specified in the association {}'.format(name))
         association._end_roles.append(end_role)
@@ -237,36 +239,37 @@ def build_association(config: Config, association_node):
     if not refer:
         referential_constraint = None
     else:
-        referential_constraint = build_element(ReferentialConstraint, config, referential_constraint_node=refer[0])
+        referential_constraint = elements.build_element(v2_elements.ReferentialConstraint, config,
+                                                        referential_constraint_node=refer[0])
 
     association._referential_constraint = referential_constraint
 
     return association
 
 
-def build_association_set_end_role(config: Config, end_node):
+def build_association_set_end_role(config: pyodata.Config, end_node):
     role = end_node.get('Role')
     entity_set = end_node.get('EntitySet')
 
-    return AssociationSetEndRole(role, entity_set)
+    return v2_elements.AssociationSetEndRole(role, entity_set)
 
 
-def build_association_set(config: Config, association_set_node):
-    end_roles: List[AssociationSetEndRole] = []
+def build_association_set(config: pyodata.Config, association_set_node):
+    end_roles: List[v2_elements.AssociationSetEndRole] = []
     name = association_set_node.get('Name')
-    association = Identifier.parse(association_set_node.get('Association'))
+    association = elements.Identifier.parse(association_set_node.get('Association'))
 
     end_roles_list = association_set_node.xpath('edm:End', namespaces=config.namespaces)
     if len(end_roles) > 2:
-        raise PyODataModelError('Association {} cannot have more than 2 end roles'.format(name))
+        raise exceptions.PyODataModelError('Association {} cannot have more than 2 end roles'.format(name))
 
     for end_role in end_roles_list:
-        end_roles.append(build_element(AssociationSetEndRole, config, end_node=end_role))
+        end_roles.append(elements.build_element(v2_elements.AssociationSetEndRole, config, end_node=end_role))
 
-    return AssociationSet(name, association.name, association.namespace, end_roles)
+    return v2_elements.AssociationSet(name, association.name, association.namespace, end_roles)
 
 
-def build_referential_constraint(config: Config, referential_constraint_node):
+def build_referential_constraint(config: pyodata.Config, referential_constraint_node):
     principal = referential_constraint_node.xpath('edm:Principal', namespaces=config.namespaces)
     if len(principal) != 1:
         raise RuntimeError('Referential constraint must contain exactly one principal element')
@@ -296,5 +299,6 @@ def build_referential_constraint(config: Config, referential_constraint_node):
         raise RuntimeError('Number of properties should be equal for the principal {} and the dependent {}'
                            .format(principal_name, dependent_name))
 
-    return ReferentialConstraint(
-        PrincipalRole(principal_name, principal_refs), DependentRole(dependent_name, dependent_refs))
+    return v2_elements.ReferentialConstraint(
+        v2_elements.PrincipalRole(principal_name, principal_refs), v2_elements.DependentRole(dependent_name,
+                                                                                             dependent_refs))

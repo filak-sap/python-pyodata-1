@@ -3,11 +3,11 @@
 import datetime
 import re
 
-from pyodata.exceptions import PyODataModelError
-from pyodata.model.type_traits import EdmPrefixedTypTraits
+import pyodata.exceptions as exceptions
+import pyodata.model.type_traits as traits
 
 
-class EdmDateTimeTypTraits(EdmPrefixedTypTraits):
+class EdmDateTimeTypTraits(traits.EdmPrefixedTypTraits):
     """Emd.DateTime traits
 
        Represents date and time with values ranging from 12:00:00 midnight,
@@ -34,7 +34,7 @@ class EdmDateTimeTypTraits(EdmPrefixedTypTraits):
         """
 
         if not isinstance(value, datetime.datetime):
-            raise PyODataModelError(
+            raise exceptions.PyODataModelError(
                 'Cannot convert value of type {} to literal. Datetime format is required.'.format(type(value)))
 
         return super(EdmDateTimeTypTraits, self).to_literal(value.replace(tzinfo=None).isoformat())
@@ -54,7 +54,7 @@ class EdmDateTimeTypTraits(EdmPrefixedTypTraits):
 
         matches = re.match(r"^/Date\((.*)\)/$", value)
         if not matches:
-            raise PyODataModelError(
+            raise exceptions.PyODataModelError(
                 "Malformed value {0} for primitive Edm type. Expected format is /Date(value)/".format(value))
         value = matches.group(1)
 
@@ -63,7 +63,7 @@ class EdmDateTimeTypTraits(EdmPrefixedTypTraits):
             value = datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc) + datetime.timedelta(
                 milliseconds=int(value))
         except ValueError:
-            raise PyODataModelError('Cannot decode datetime from value {}.'.format(value))
+            raise exceptions.PyODataModelError('Cannot decode datetime from value {}.'.format(value))
 
         return value
 
@@ -83,6 +83,6 @@ class EdmDateTimeTypTraits(EdmPrefixedTypTraits):
                 try:
                     value = datetime.datetime.strptime(value, '%Y-%m-%dT%H:%M')
                 except ValueError:
-                    raise PyODataModelError('Cannot decode datetime from value {}.'.format(value))
+                    raise exceptions.PyODataModelError('Cannot decode datetime from value {}.'.format(value))
 
         return value

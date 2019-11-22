@@ -2,38 +2,38 @@
 
 from typing import List
 
-from pyodata.config import ODATAVersion
-from pyodata.model.type_traits import EdmBooleanTypTraits, EdmIntTypTraits
-from pyodata.model.elements import Typ, Schema, EnumType, ComplexType, StructType, StructTypeProperty, EntityType
+import pyodata.config as pyodata
 
-from pyodata.v4.elements import NavigationTypeProperty, NavigationPropertyBinding, EntitySet, Unit
-from pyodata.v4.type_traits import EdmDateTypTraits, GeoTypeTraits, EdmDoubleQuotesEncapsulatedTypTraits, \
-    EdmTimeOfDay, EdmDateTimeOffsetTypTraits, EdmDuration
+import pyodata.model.elements as base_elements
+import pyodata.v4.elements as v4_elements
 
-import pyodata.v4.build_functions as build_functions_v4
-import pyodata.model.build_functions as build_functions
+import pyodata.model.type_traits as base_traits
+import pyodata.v4.type_traits as v4_traits
+
+import pyodata.model.build_functions as base_build_functions
+import pyodata.v4.build_functions as v4_build_functions
 
 
-class ODataV4(ODATAVersion):
+class ODataV4(pyodata.ODATAVersion):
     """ Definition of OData V4 """
 
     @staticmethod
     def build_functions():
         return {
-            StructTypeProperty: build_functions.build_struct_type_property,
-            StructType: build_functions.build_struct_type,
-            NavigationTypeProperty: build_functions_v4.build_navigation_type_property,
-            NavigationPropertyBinding: build_functions_v4.build_navigation_property_binding,
-            EnumType: build_functions.build_enum_type,
-            ComplexType: build_functions.build_complex_type,
-            EntityType: build_functions.build_entity_type,
-            EntitySet: build_functions.build_entity_set,
-            Typ: build_functions_v4.build_type_definition,
-            Schema: build_functions_v4.build_schema,
+            base_elements.StructTypeProperty: base_build_functions.build_struct_type_property,
+            base_elements.StructType: base_build_functions.build_struct_type,
+            v4_elements.NavigationTypeProperty: v4_build_functions.build_navigation_type_property,
+            v4_elements.NavigationPropertyBinding: v4_build_functions.build_navigation_property_binding,
+            base_elements.EnumType: base_build_functions.build_enum_type,
+            base_elements.ComplexType: base_build_functions.build_complex_type,
+            base_elements.EntityType: base_build_functions.build_entity_type,
+            v4_elements.EntitySet: base_build_functions.build_entity_set,
+            base_elements.Typ: v4_build_functions.build_type_definition,
+            base_elements.Schema: v4_build_functions.build_schema,
         }
 
     @staticmethod
-    def primitive_types() -> List[Typ]:
+    def primitive_types() -> List[base_elements.Typ]:
         # TODO: We currently lack support for:
         #   'Edm.Geometry',
         #   'Edm.GeometryPoint',
@@ -45,35 +45,36 @@ class ODataV4(ODATAVersion):
         #   'Edm.GeometryCollection',
 
         return [
-            Typ('Null', 'null'),
-            Typ('Edm.Binary', '', EdmDoubleQuotesEncapsulatedTypTraits()),
-            Typ('Edm.Boolean', 'false', EdmBooleanTypTraits()),
-            Typ('Edm.Byte', '0'),
-            Typ('Edm.Date', '0000-00-00', EdmDateTypTraits()),
-            Typ('Edm.Decimal', '0.0'),
-            Typ('Edm.Double', '0.0'),
-            Typ('Edm.Duration', 'P', EdmDuration()),
-            Typ('Edm.Stream', 'null', EdmDoubleQuotesEncapsulatedTypTraits()),
-            Typ('Edm.Single', '0.0', EdmDoubleQuotesEncapsulatedTypTraits()),
-            Typ('Edm.Guid', '\"00000000-0000-0000-0000-000000000000\"', EdmDoubleQuotesEncapsulatedTypTraits()),
-            Typ('Edm.Int16', '0', EdmIntTypTraits()),
-            Typ('Edm.Int32', '0', EdmIntTypTraits()),
-            Typ('Edm.Int64', '0', EdmIntTypTraits()),
-            Typ('Edm.SByte', '0'),
-            Typ('Edm.String', '\"\"', EdmDoubleQuotesEncapsulatedTypTraits()),
-            Typ('Edm.TimeOfDay', '00:00:00', EdmTimeOfDay()),
-            Typ('Edm.DateTimeOffset', '0000-00-00T00:00:00', EdmDateTimeOffsetTypTraits()),
-            Typ('Edm.Geography', '', GeoTypeTraits()),
-            Typ('Edm.GeographyPoint', '', GeoTypeTraits()),
-            Typ('Edm.GeographyLineString', '', GeoTypeTraits()),
-            Typ('Edm.GeographyPolygon', '', GeoTypeTraits()),
-            Typ('Edm.GeographyMultiPoint', '', GeoTypeTraits()),
-            Typ('Edm.GeographyMultiLineString', '', GeoTypeTraits()),
-            Typ('Edm.GeographyMultiPolygon', '', GeoTypeTraits()),
+            base_elements.Typ('Null', 'null'),
+            base_elements.Typ('Edm.Binary', '', v4_traits.EdmDoubleQuotesEncapsulatedTypTraits()),
+            base_elements.Typ('Edm.Boolean', 'false', base_traits.EdmBooleanTypTraits()),
+            base_elements.Typ('Edm.Byte', '0'),
+            base_elements.Typ('Edm.Date', '0000-00-00', v4_traits.EdmDateTypTraits()),
+            base_elements.Typ('Edm.Decimal', '0.0'),
+            base_elements.Typ('Edm.Double', '0.0'),
+            base_elements.Typ('Edm.Duration', 'P', v4_traits.EdmDuration()),
+            base_elements.Typ('Edm.Stream', 'null', v4_traits.EdmDoubleQuotesEncapsulatedTypTraits()),
+            base_elements.Typ('Edm.Single', '0.0', v4_traits.EdmDoubleQuotesEncapsulatedTypTraits()),
+            base_elements.Typ('Edm.Guid', '\"00000000-0000-0000-0000-000000000000\"',
+                              v4_traits.EdmDoubleQuotesEncapsulatedTypTraits()),
+            base_elements.Typ('Edm.Int16', '0', base_traits.EdmIntTypTraits()),
+            base_elements.Typ('Edm.Int32', '0', base_traits.EdmIntTypTraits()),
+            base_elements.Typ('Edm.Int64', '0', base_traits.EdmIntTypTraits()),
+            base_elements.Typ('Edm.SByte', '0'),
+            base_elements.Typ('Edm.String', '\"\"', v4_traits.EdmDoubleQuotesEncapsulatedTypTraits()),
+            base_elements.Typ('Edm.TimeOfDay', '00:00:00', v4_traits.EdmTimeOfDay()),
+            base_elements.Typ('Edm.DateTimeOffset', '0000-00-00T00:00:00', v4_traits.EdmDateTimeOffsetTypTraits()),
+            base_elements.Typ('Edm.Geography', '', v4_traits.GeoTypeTraits()),
+            base_elements.Typ('Edm.GeographyPoint', '', v4_traits.GeoTypeTraits()),
+            base_elements.Typ('Edm.GeographyLineString', '', v4_traits.GeoTypeTraits()),
+            base_elements.Typ('Edm.GeographyPolygon', '', v4_traits.GeoTypeTraits()),
+            base_elements.Typ('Edm.GeographyMultiPoint', '', v4_traits.GeoTypeTraits()),
+            base_elements.Typ('Edm.GeographyMultiLineString', '', v4_traits.GeoTypeTraits()),
+            base_elements.Typ('Edm.GeographyMultiPolygon', '', v4_traits.GeoTypeTraits()),
         ]
 
     @staticmethod
     def annotations():
         return {
-            Unit: build_functions_v4.build_unit_annotation
+            v4_elements.Unit: v4_build_functions.build_unit_annotation
         }

@@ -11,11 +11,11 @@ try:
 except ImportError:
     GEOJSON_MODULE = False
 
-from pyodata.exceptions import PyODataModelError, PyODataException
-from pyodata.model.type_traits import TypTraits
+import pyodata.exceptions as exceptions
+import pyodata.model.type_traits as traits
 
 
-class EdmDoubleQuotesEncapsulatedTypTraits(TypTraits):
+class EdmDoubleQuotesEncapsulatedTypTraits(traits.TypTraits):
     """Good for all types which are encapsulated in double quotes"""
 
     def to_literal(self, value):
@@ -42,7 +42,7 @@ class EdmDateTypTraits(EdmDoubleQuotesEncapsulatedTypTraits):
 
     def to_literal(self, value: datetime.date):
         if not isinstance(value, datetime.date):
-            raise PyODataModelError(
+            raise exceptions.PyODataModelError(
                 'Cannot convert value of type {} to literal. Date format is required.'.format(type(value)))
 
         return super().to_literal(value.isoformat())
@@ -57,7 +57,7 @@ class EdmDateTypTraits(EdmDoubleQuotesEncapsulatedTypTraits):
         try:
             return datetime.date.fromisoformat(super().from_literal(value))
         except ValueError:
-            raise PyODataModelError('Cannot decode date from value {}.'.format(value))
+            raise exceptions.PyODataModelError('Cannot decode date from value {}.'.format(value))
 
     def from_json(self, value: str):
         return self.from_literal(value)
@@ -75,7 +75,7 @@ class EdmTimeOfDay(EdmDoubleQuotesEncapsulatedTypTraits):
 
     def to_literal(self, value: datetime.time):
         if not isinstance(value, datetime.time):
-            raise PyODataModelError(
+            raise exceptions.PyODataModelError(
                 'Cannot convert value of type {} to literal. Time format is required.'.format(type(value)))
 
         return super().to_literal(value.replace(tzinfo=None).isoformat())
@@ -90,13 +90,13 @@ class EdmTimeOfDay(EdmDoubleQuotesEncapsulatedTypTraits):
         try:
             return datetime.time.fromisoformat(super().from_literal(value))
         except ValueError:
-            raise PyODataModelError('Cannot decode date from value {}.'.format(value))
+            raise exceptions.PyODataModelError('Cannot decode date from value {}.'.format(value))
 
     def from_json(self, value: str):
         return self.from_literal(value)
 
 
-class EdmDuration(TypTraits):
+class EdmDuration(traits.TypTraits):
     """ Emd.Duration traits
 
         Represents time duration as described in xml specification (https://www.w3.org/TR/xmlschema11-2/#duration)
@@ -116,7 +116,8 @@ class EdmDuration(TypTraits):
         result = 'P'
 
         if not isinstance(value, EdmDuration.Duration):
-            raise PyODataModelError(f'Cannot convert value of type {type(value)}. Duration format is required.')
+            raise exceptions.PyODataModelError(f'Cannot convert value of type {type(value)}. '
+                                               f'Duration format is required.')
 
         if value.year > 0:
             result += f'{value.year}Y'
@@ -194,11 +195,11 @@ class EdmDateTimeOffsetTypTraits(EdmDoubleQuotesEncapsulatedTypTraits):
         """Convert python datetime representation to literal format"""
 
         if not isinstance(value, datetime.datetime):
-            raise PyODataModelError(
+            raise exceptions.PyODataModelError(
                 'Cannot convert value of type {} to literal. Datetime format is required.'.format(type(value)))
 
         if value.tzinfo is None:
-            raise PyODataModelError(
+            raise exceptions.PyODataModelError(
                 'Datetime pass without explicitly setting timezone.  You need to provide timezone information for valid'
                 ' Emd.DateTimeOffset')
 
@@ -224,7 +225,7 @@ class EdmDateTimeOffsetTypTraits(EdmDoubleQuotesEncapsulatedTypTraits):
             try:
                 value = datetime.datetime.strptime(value, '%Y-%m-%dT%H:%M:%S%z')
             except ValueError:
-                raise PyODataModelError('Cannot decode datetime from value {}.'.format(value))
+                raise exceptions.PyODataModelError('Cannot decode datetime from value {}.'.format(value))
 
         if value.tzinfo is None:
             value = value.replace(tzinfo=datetime.timezone.utc)
@@ -235,14 +236,14 @@ class EdmDateTimeOffsetTypTraits(EdmDoubleQuotesEncapsulatedTypTraits):
         return self.from_literal(value)
 
 
-class GeoTypeTraits(TypTraits):
+class GeoTypeTraits(traits.TypTraits):
     """ Edm.Geography XXX
         Represents elements which are complaint with geojson specification
     """
 
     def __getattribute__(self, item):
         if not GEOJSON_MODULE:
-            raise PyODataException('To use geography types you need to install pip package geojson')
+            raise exceptions.PyODataException('To use geography types you need to install pip package geojson')
 
         return object.__getattribute__(self, item)
 

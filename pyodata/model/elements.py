@@ -3,15 +3,16 @@
 import collections
 import itertools
 import logging
+
 from abc import abstractmethod
 from enum import Enum
 from typing import Union
 
-from pyodata.policies import ParserError
-from pyodata.config import Config
-from pyodata.exceptions import PyODataModelError, PyODataException, PyODataParserError
 
-from pyodata.model.type_traits import TypTraits, EdmStructTypTraits, EnumTypTrait
+import pyodata.config as pyodata
+import pyodata.policies as policies
+import pyodata.exceptions as exceptions
+import pyodata.model.type_traits as base_traits
 
 
 IdentifierInfo = collections.namedtuple('IdentifierInfo', 'namespace name')
@@ -22,7 +23,7 @@ def modlog():
     return logging.getLogger("Elements")
 
 
-def build_element(element_name: Union[str, type], config: Config, **kwargs):
+def build_element(element_name: Union[str, type], config: pyodata.Config, **kwargs):
     """
     This function is responsible for resolving which implementation is to be called for parsing EDM element. It's a
     primitive implementation of dynamic dispatch, thus there exist table where all supported elements are assigned
@@ -48,10 +49,10 @@ def build_element(element_name: Union[str, type], config: Config, **kwargs):
         if element_name == clb.__name__:
             return callbacks[clb](config, **kwargs)
 
-    raise PyODataParserError(f'{element_name} is unsupported in {config.odata_version.__name__}')
+    raise exceptions.PyODataParserError(f'{element_name} is unsupported in {config.odata_version.__name__}')
 
 
-def build_annotation(term: str, config: Config, **kwargs):
+def build_annotation(term: str, config: pyodata.Config, **kwargs):
     """
     Similarly to build_element this function purpoas is to resolve build function for annotations. There are two
     main differences:
@@ -80,9 +81,10 @@ def build_annotation(term: str, config: Config, **kwargs):
                 annotations[annotation](config, **kwargs)
                 return
 
-        raise PyODataParserError(f'Annotation with term {term} is unsupported in {config.odata_version.__name__}')
-    except PyODataException as ex:
-        config.err_policy(ParserError.ANNOTATION).resolve(ex)
+        raise exceptions.PyODataParserError(
+            f'Annotation with term {term} is unsupported in {config.odata_version.__name__}')
+    except exceptions.PyODataException as ex:
+        config.err_policy(policies.ParserError.ANNOTATION).resolve(ex)
 
 
 class NullType:
@@ -90,8 +92,9 @@ class NullType:
         self.name = name
 
     def __getattr__(self, item):
-        raise PyODataModelError(f'Cannot access this type. An error occurred during parsing type stated in '
-                                f'xml({self.name}) was not found, therefore it has been replaced with NullType.')
+        raise exceptions.PyODataModelError(
+            f'Cannot access this type. An error occurred during parsing type stated in xml({self.name}) was not found, '
+            f'therefore it has been replaced with NullType.')
 
 
 class NullAnnotation:
@@ -99,8 +102,9 @@ class NullAnnotation:
         self.term = term
 
     def __getattr__(self, item):
-        raise PyODataModelError(f'Cannot access this annotation. An error occurred during parsing '
-                                f'annotation(term = {self.term}), therefore it has been replaced with NullAnnotation.')
+        raise exceptions.PyODataModelError(
+            f'Cannot access this annotation. An error occurred during parsing annotation(term = {self.term}), '
+            f'therefore it has been replaced with NullAnnotation.')
 
 
 class Identifier:
@@ -139,7 +143,7 @@ class Types:
     """
 
     @staticmethod
-    def register_type(typ: 'Typ', config: Config):
+    def register_type(typ: 'Typ', config: pyodata.Config):
         """Add new type to the ODATA version type repository as well as its collection variant"""
 
         o_version = config.odata_version
@@ -155,7 +159,7 @@ class Types:
             o_version.Types[collection_name] = collection_typ
 
     @staticmethod
-    def from_name(name, config: Config) -> 'Typ':
+    def from_name(name, config: pyodata.Config) -> 'Typ':
         o_version = config.odata_version
 
         # build types hierarchy on first use (lazy creation)
@@ -199,7 +203,7 @@ class Typ(Identifier):
     Kinds = Enum('Kinds', 'Primitive Complex')
 
     # pylint: disable=line-too-long
-    def __init__(self, name, null_value, traits=TypTraits(), kind=None):
+    def __init__(self, name, null_value, traits=base_traits.TypTraits(), kind=None):
         super(Typ, self).__init__(name)
 
         self._null_value = null_value
@@ -262,14 +266,14 @@ class Collection(Typ):
     # pylint: disable=no-self-use
     def to_literal(self, value):
         if not isinstance(value, list):
-            raise PyODataException('Bad format: invalid list value {}'.format(value))
+            raise exceptions.PyODataException('Bad format: invalid list value {}'.format(value))
 
         return [self._item_type.traits.to_literal(v) for v in value]
 
     # pylint: disable=no-self-use
     def from_json(self, value):
         if not isinstance(value, list):
-            raise PyODataException('Bad format: invalid list value {}'.format(value))
+            raise exceptions.PyODataException('Bad format: invalid list value {}'.format(value))
 
         return [self._item_type.traits.from_json(v) for v in value]
 
@@ -338,8 +342,8 @@ class VariableDeclaration(Identifier):
 
     def _check_scale_value(self):
         if self._scale > self._precision:
-            raise PyODataModelError('Scale value ({}) must be less than or equal to precision value ({})'
-                                    .format(self._scale, self._precision))
+            raise exceptions.PyODataModelError('Scale value ({}) must be less than or equal to precision value ({})'
+                                               .format(self._scale, self._precision))
 
 
 class Schema:
@@ -422,7 +426,7 @@ class Schema:
             except KeyError:
                 raise KeyError('There is no Schema Namespace {}'.format(key))
 
-    def __init__(self, config: Config):
+    def __init__(self, config: pyodata.Config):
         super(Schema, self).__init__()
 
         self._decls = Schema.Declarations()
@@ -547,7 +551,7 @@ class Schema:
         except KeyError:
             pass
 
-        raise PyODataModelError(
+        raise exceptions.PyODataModelError(
             'Neither primitive types nor types parsed from service metadata contain requested type {}'
             .format(type_info.name))
 
@@ -607,17 +611,17 @@ class Schema:
             try:
                 entity_type = self.entity_type(entity_type_name, namespace)
             except KeyError:
-                raise PyODataModelError('EntityType {} does not exist in Schema Namespace {}'
-                                        .format(entity_type_name, namespace))
+                raise exceptions.PyODataModelError('EntityType {} does not exist in Schema Namespace {}'
+                                                   .format(entity_type_name, namespace))
             try:
                 entity_type.proprty(proprty)
             except KeyError:
-                raise PyODataModelError('Property {} does not exist in {}'.format(proprty, entity_type.name))
+                raise exceptions.PyODataModelError('Property {} does not exist in {}'.format(proprty, entity_type.name))
 
 
 class StructType(Typ):
     def __init__(self, name, label, is_value_list):
-        super(StructType, self).__init__(name, None, EdmStructTypTraits(self), Typ.Kinds.Complex)
+        super(StructType, self).__init__(name, None, base_traits.EdmStructTypTraits(self), Typ.Kinds.Complex)
 
         self._label = label
         self._is_value_list = is_value_list
@@ -654,7 +658,7 @@ class StructType(Typ):
     @property
     def traits(self):
         # return self._traits
-        return EdmStructTypTraits(self)
+        return base_traits.EdmStructTypTraits(self)
 
 
 class ComplexType(StructType):
@@ -688,7 +692,7 @@ class EnumType(Identifier):
         super(EnumType, self).__init__(name)
         self._member = list()
         self._underlying_type = underlying_type
-        self._traits = TypTraits()
+        self._traits = base_traits.TypTraits()
         self._namespace = namespace
 
         if is_flags == 'True':
@@ -702,7 +706,7 @@ class EnumType(Identifier):
     def __getattr__(self, item):
         member = next(filter(lambda x: x.name == item, self._member), None)
         if member is None:
-            raise PyODataException(f'EnumType {self} has no member {item}')
+            raise exceptions.PyODataException(f'EnumType {self} has no member {item}')
 
         return member
 
@@ -713,7 +717,7 @@ class EnumType(Identifier):
 
         member = next(filter(lambda x: x.value == int(item), self._member), None)
         if member is None:
-            raise PyODataException(f'EnumType {self} has no member with value {item}')
+            raise exceptions.PyODataException(f'EnumType {self} has no member with value {item}')
 
         return member
 
@@ -723,7 +727,7 @@ class EnumType(Identifier):
 
     @property
     def traits(self):
-        return EnumTypTrait(self)
+        return base_traits.EnumTypTrait(self)
 
     @property
     def namespace(self):
@@ -750,7 +754,7 @@ class EntityType(StructType):
         try:
             return self._nav_properties[property_name]
         except KeyError as ex:
-            raise PyODataModelError(f'{self} does not contain navigation property {property_name}') from ex
+            raise exceptions.PyODataModelError(f'{self} does not contain navigation property {property_name}') from ex
 
 
 class EntitySet(Identifier):

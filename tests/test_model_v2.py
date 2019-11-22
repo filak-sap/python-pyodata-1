@@ -1057,7 +1057,7 @@ def test_missing_schema(xml_builder_factory):
         assert str(ex) == 'Metadata document is missing the element Schema'
 
 
-@patch('pyodata.model.builder.build_element', return_value='Mocked')
+@patch('pyodata.model.elements.build_element', return_value='Mocked')
 def test_namespace_whitelist(mock_build_element: MagicMock, xml_builder_factory):
     """Test correct handling of whitelisted namespaces"""
 
@@ -1070,7 +1070,7 @@ def test_namespace_whitelist(mock_build_element: MagicMock, xml_builder_factory)
     assert MetadataBuilder(xml).build() == 'Mocked'
 
 
-@patch('pyodata.model.builder.build_element', return_value='Mocked')
+@patch('pyodata.model.elements.build_element', return_value='Mocked')
 def test_unsupported_edmx_n(mock_build_element, xml_builder_factory):
     """Test correct handling of non-whitelisted Edmx namespaces"""
 
@@ -1098,7 +1098,7 @@ def test_unsupported_edmx_n(mock_build_element, xml_builder_factory):
     mock_build_element.assert_called_once()
 
 
-@patch('pyodata.model.builder.build_element', return_value='Mocked')
+@patch('pyodata.model.elements.build_element', return_value='Mocked')
 def test_unsupported_schema_n(mock_build_element, xml_builder_factory):
     """Test correct handling of non-whitelisted Schema namespaces"""
 
@@ -1126,7 +1126,7 @@ def test_unsupported_schema_n(mock_build_element, xml_builder_factory):
     mock_build_element.assert_called_once()
 
 
-@patch('pyodata.model.builder.build_element', return_value='Mocked')
+@patch('pyodata.model.elements.build_element', return_value='Mocked')
 def test_whitelisted_edm_namespace(mock_from_etree, xml_builder_factory):
     """Test correct handling of whitelisted Microsoft's edm namespace"""
 
@@ -1138,7 +1138,7 @@ def test_whitelisted_edm_namespace(mock_from_etree, xml_builder_factory):
     assert MetadataBuilder(xml).build() == 'Mocked'
 
 
-@patch('pyodata.v2.build_functions_v2.build_schema')
+@patch('pyodata.v2.v2_build_functions.build_schema')
 def test_whitelisted_edm_namespace_2006_04(mocked, xml_builder_factory):
     """Test correct handling of whitelisted Microsoft's edm namespace"""
 
@@ -1151,7 +1151,7 @@ def test_whitelisted_edm_namespace_2006_04(mocked, xml_builder_factory):
     mocked.assert_called_once()
 
 
-@patch('pyodata.v2.build_functions_v2.build_schema')
+@patch('pyodata.v2.v2_build_functions.build_schema')
 def test_whitelisted_edm_namespace_2007_05(mocked, xml_builder_factory):
     """Test correct handling of whitelisted Microsoft's edm namespace"""
 

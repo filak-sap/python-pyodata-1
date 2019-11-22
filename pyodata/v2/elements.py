@@ -3,9 +3,8 @@
 
 import itertools
 
-from pyodata import model
-from pyodata.exceptions import PyODataModelError
-from pyodata.model.elements import VariableDeclaration
+import pyodata.exceptions as exceptions
+import pyodata.model.elements as elements
 
 
 class NullAssociation:
@@ -13,11 +12,12 @@ class NullAssociation:
         self.name = name
 
     def __getattr__(self, item):
-        raise PyODataModelError('Cannot access this association. An error occurred during parsing '
-                                'association metadata due to that annotation has been omitted.')
+        raise exceptions.PyODataModelError(
+            'Cannot access this association. An error occurred during parsing '
+            'association metadata due to that annotation has been omitted.')
 
 
-class NavigationTypeProperty(VariableDeclaration):
+class NavigationTypeProperty(elements.VariableDeclaration):
     """Defines a navigation property, which provides a reference to the other end of an association
 
        Unlike properties defined with the Property element, navigation properties do not define the
@@ -57,10 +57,11 @@ class NavigationTypeProperty(VariableDeclaration):
     def association(self, value):
 
         if self._association is not None:
-            raise PyODataModelError('Cannot replace {0} of {1} to {2}'.format(self._association, self, value))
+            raise exceptions.PyODataModelError('Cannot replace {0} of {1} to {2}'.format(self._association,
+                                                                                         self, value))
 
         if value.name != self._association_info.name:
-            raise PyODataModelError('{0} cannot be the type of {1}'.format(value, self))
+            raise exceptions.PyODataModelError('{0} cannot be the type of {1}'.format(value, self))
 
         self._association = value
 
@@ -103,10 +104,11 @@ class EndRole:
     def entity_type(self, value):
 
         if self._entity_type is not None:
-            raise PyODataModelError('Cannot replace {0} of {1} to {2}'.format(self._entity_type, self, value))
+            raise exceptions.PyODataModelError('Cannot replace {0} of {1} to {2}'.format(self._entity_type,
+                                                                                         self, value))
 
         if value.name != self._entity_type_info.name:
-            raise PyODataModelError('{0} cannot be the type of {1}'.format(value, self))
+            raise exceptions.PyODataModelError('{0} cannot be the type of {1}'.format(value, self))
 
         self._entity_type = value
 
@@ -181,10 +183,10 @@ class AssociationSetEndRole:
     @entity_set.setter
     def entity_set(self, value):
         if self._entity_set:
-            raise PyODataModelError('Cannot replace {0} of {1} to {2}'.format(self._entity_set, self, value))
+            raise exceptions.PyODataModelError('Cannot replace {0} of {1} to {2}'.format(self._entity_set, self, value))
 
         if value.name != self._entity_set_name:
-            raise PyODataModelError(
+            raise exceptions.PyODataModelError(
                 'Assigned entity set {0} differentiates from the declared {1}'.format(value, self._entity_set_name))
 
         self._entity_set = value
@@ -276,7 +278,7 @@ class ReferentialConstraint:
         return self._dependent
 
 
-class Schema(model.elements.Schema):
+class Schema(elements.Schema):
     def association(self, association_name, namespace=None):
         if namespace is not None:
             try:

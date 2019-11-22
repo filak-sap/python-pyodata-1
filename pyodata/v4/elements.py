@@ -3,14 +3,13 @@ from typing import Optional, List
 
 import collections
 
-from pyodata.model import elements
-from pyodata.exceptions import PyODataModelError
-from pyodata.model.elements import VariableDeclaration, StructType, TypeInfo, Annotation
+import pyodata.exceptions as exceptions
+import pyodata.model.elements as elements
 
 PathInfo = collections.namedtuple('PathInfo', 'namespace type proprty')
 
 
-def to_path_info(value: str, et_info: TypeInfo):
+def to_path_info(value: str, et_info: elements.TypeInfo):
     """ Helper function for parsing Path attribute on NavigationPropertyBinding property """
     if '/' in value:
         parts = value.split('.')
@@ -26,9 +25,9 @@ class NullProperty:
         self.name = name
 
     def __getattr__(self, item):
-        raise PyODataModelError(f'Cannot access this property. An error occurred during parsing property stated in '
-                                f'xml({self.name}) and it was not found, therefore it has been replaced with '
-                                f'NullProperty.')
+        raise exceptions.PyODataModelError(
+            f'Cannot access this property. An error occurred during parsing property stated in xml({self.name}) and it '
+            f'was not found, therefore it has been replaced with NullProperty.')
 
 
 # pylint: disable=missing-docstring
@@ -40,8 +39,8 @@ class ReferentialConstraint:
     def __init__(self, proprty_name: str, referenced_proprty_name: str):
         self._proprty_name = proprty_name
         self._referenced_proprty_name = referenced_proprty_name
-        self._property: Optional[VariableDeclaration] = None
-        self._referenced_property: Optional[VariableDeclaration] = None
+        self._property: Optional[elements.VariableDeclaration] = None
+        self._referenced_property: Optional[elements.VariableDeclaration] = None
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.proprty}, {self.referenced_proprty})"
@@ -58,23 +57,23 @@ class ReferentialConstraint:
         return self._referenced_proprty_name
 
     @property
-    def proprty(self) -> Optional[VariableDeclaration]:
+    def proprty(self) -> Optional[elements.VariableDeclaration]:
         return self._property
 
     @proprty.setter
-    def proprty(self, value: VariableDeclaration):
+    def proprty(self, value: elements.VariableDeclaration):
         self._property = value
 
     @property
-    def referenced_proprty(self) -> Optional[VariableDeclaration]:
+    def referenced_proprty(self) -> Optional[elements.VariableDeclaration]:
         return self._referenced_property
 
     @referenced_proprty.setter
-    def referenced_proprty(self, value: VariableDeclaration):
+    def referenced_proprty(self, value: elements.VariableDeclaration):
         self._referenced_property = value
 
 
-class NavigationTypeProperty(VariableDeclaration):
+class NavigationTypeProperty(elements.VariableDeclaration):
     """Defines a navigation property, which provides a reference to the other end of an association
     """
 
@@ -99,7 +98,7 @@ class NavigationTypeProperty(VariableDeclaration):
         return self._partner
 
     @partner.setter
-    def partner(self, value: StructType):
+    def partner(self, value: elements.StructType):
         self._partner = value
 
     @property
@@ -166,7 +165,7 @@ class EntitySet(elements.EntitySet):
         return self._navigation_property_bindings
 
 
-class Unit(Annotation):
+class Unit(elements.Annotation):
 
     def __init__(self, target, unit_name: str):
         super(Unit, self).__init__(target)

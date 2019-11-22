@@ -2,7 +2,7 @@
 
 import re
 
-from pyodata.exceptions import PyODataException, PyODataModelError
+import pyodata.exceptions as exceptions
 
 
 class EdmStructTypeSerializer:
@@ -21,7 +21,7 @@ class EdmStructTypeSerializer:
 
         # pylint: disable=no-self-use
         if not edm_type:
-            raise PyODataException('Cannot encode value {} without complex type information'.format(value))
+            raise exceptions.PyODataException('Cannot encode value {} without complex type information'.format(value))
 
         result = {}
         for type_prop in edm_type.proprties():
@@ -35,7 +35,7 @@ class EdmStructTypeSerializer:
 
         # pylint: disable=no-self-use
         if not edm_type:
-            raise PyODataException('Cannot decode value {} without complex type information'.format(value))
+            raise exceptions.PyODataException('Cannot decode value {} without complex type information'.format(value))
 
         result = {}
         for type_prop in edm_type.proprties():
@@ -49,7 +49,7 @@ class EdmStructTypeSerializer:
 
         # pylint: disable=no-self-use
         if not edm_type:
-            raise PyODataException('Cannot decode value {} without complex type information'.format(value))
+            raise exceptions.PyODataException('Cannot decode value {} without complex type information'.format(value))
 
         result = {}
         for type_prop in edm_type.proprties():
@@ -93,7 +93,7 @@ class EdmPrefixedTypTraits(TypTraits):
     def from_literal(self, value):
         matches = re.match("^{}'(.*)'$".format(self._prefix), value)
         if not matches:
-            raise PyODataModelError(
+            raise exceptions.PyODataModelError(
                 "Malformed value {0} for primitive Edm type. Expected format is {1}'value'".format(value, self._prefix))
         return matches.group(1)
 
