@@ -9,10 +9,6 @@ import pyodata.policies as policies
 import pyodata.exceptions as exceptions
 import pyodata.model.elements as elements
 
-# pylint: disable=cyclic-import
-# When using `import xxx as yyy` it is not a problem and we need this dependency
-import pyodata.v4 as odata_v4
-
 
 def modlog():
     return logging.getLogger("callbacks")
@@ -166,14 +162,9 @@ def build_enum_type(config: conf.Config, type_node, namespace):
         return elements.NullType(type_node.get('Name'))
 
 
-def build_entity_set(config, entity_set_node):
+def build_entity_set(config, entity_set_node, builder=None):
     name = entity_set_node.get('Name')
     et_info = elements.Types.parse_type_name(entity_set_node.get('EntityType'))
-
-    nav_prop_bins = []
-    for nav_prop_bin in entity_set_node.xpath('edm:NavigationPropertyBinding', namespaces=config.namespaces):
-        nav_prop_bins.append(elements.build_element('NavigationPropertyBinding', config, node=nav_prop_bin,
-                                                    et_info=et_info))
 
     # TODO: create a class SAP attributes
     addressable = elements.sap_attribute_get_bool(entity_set_node, 'addressable', True)
@@ -187,13 +178,12 @@ def build_entity_set(config, entity_set_node):
     req_filter = elements.sap_attribute_get_bool(entity_set_node, 'requires-filter', False)
     label = elements.sap_attribute_get_string(entity_set_node, 'label')
 
-    if config.odata_version == odata_v4.ODataV4:
-        return odata_v4.v4_elements.EntitySet(name, et_info, addressable, creatable, updatable, deletable, searchable,
-                                              countable, pageable, topable, req_filter, label, nav_prop_bins)
-
-    return elements.EntitySet(name, et_info, addressable, creatable, updatable, deletable, searchable, countable,
+    if builder is None:
+        return elements.EntitySet(name, et_info, addressable, creatable, updatable, deletable, searchable, countable,
                               pageable, topable, req_filter, label)
 
+    return builder(config, entity_set_node, name, et_info, addressable, creatable, updatable, deletable, searchable, countable,
+                  pageable, topable, req_filter, label)
 
 def build_value_helper(config, target, annotation_node, schema):
     label = None

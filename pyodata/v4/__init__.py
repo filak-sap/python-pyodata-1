@@ -14,6 +14,24 @@ import pyodata.model.build_functions as base_build_functions
 import pyodata.v4.build_functions as v4_build_functions
 
 
+
+def build_entity_set_v4(config, entity_set_node, name, et_info, addressable, creatable, updatable, deletable, searchable,
+                        countable, pageable, topable, req_filter, label, nav_prop_bins):
+    nav_prop_bins = []
+    for nav_prop_bin in entity_set_node.xpath('edm:NavigationPropertyBinding', namespaces=config.namespaces):
+        nav_prop_bins.append(base_elements.build_element('NavigationPropertyBinding', config, node=nav_prop_bin,
+                             et_info=et_info))
+
+    return odata_v4.v4_elements.EntitySet(name, et_info, addressable, creatable, updatable, deletable, searchable,
+                                          countable, pageable, topable, req_filter, label, nav_prop_bins)
+
+
+def build_entity_set_with_v4_builder(config, entity_set_node):
+    """Adapter inserting the V4 specific builder"""
+
+    return base_build_functions.build_entity_set(config, entity_set_node, builder=builder)
+
+
 class ODataV4(conf.ODATAVersion):
     """ Definition of OData V4 """
 
@@ -27,7 +45,7 @@ class ODataV4(conf.ODATAVersion):
             base_elements.EnumType: base_build_functions.build_enum_type,
             base_elements.ComplexType: base_build_functions.build_complex_type,
             base_elements.EntityType: base_build_functions.build_entity_type,
-            v4_elements.EntitySet: base_build_functions.build_entity_set,
+            v4_elements.EntitySet: build_entity_set_with_v4_builder,
             base_elements.Typ: v4_build_functions.build_type_definition,
             base_elements.Schema: v4_build_functions.build_schema,
         }
