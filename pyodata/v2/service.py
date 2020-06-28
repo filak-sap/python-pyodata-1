@@ -314,7 +314,7 @@ class ODataHttpRequest:
         if body:
             self._logger.debug('  body: %s', body)
 
-        params = "&".join("%s=%s" % (k,v) for k,v in self.get_query_params().items())
+        params = "&".join("%s=%s" % (k, v) for k, v in self.get_query_params().items())
         response = self._connection.request(
             self.get_method(), url, headers=headers, params=params, data=body)
 
@@ -993,144 +993,212 @@ class GetEntitySetFilter:
     def __gt__(self, value):
         return GetEntitySetFilter.format_filter(self._proprty, 'gt', value)
 
-class FilterExpression(object):
-    def __init__(self, *args, **kwargs):
-        self.expressions = kwargs
-        self.other = None
-        self.operator = None
+
+class FilterExpression:
+    """A class representing named expression of OData $filter"""
+
+    def __init__(self, **kwargs):
+        self._expressions = kwargs
+        self._other = None
+        self._operator = None
+
+    @property
+    def expressions(self):
+        """Get expressions where key is property name with the operator suffix
+           and value is the left hand side operand.
+        """
+
+        return self._expressions.items()
+
+    @property
+    def other(self):
+        """Get an instance of the other operand"""
+
+        return self._other
+
+    @property
+    def operator(self):
+        """The other operand"""
+
+        return self._operator
 
     def __or__(self, other):
-        self.other = other
-        self.operator = "or"
+        if self._other is not None:
+            raise RuntimeError('The FilterExpression already initialized')
+
+        self._other = other
+        self._operator = "or"
         return self
 
     def __and__(self, other):
-        self.other = other
-        self.operator = "and"
+        if self._other is not None:
+            raise RuntimeError('The FilterExpression already initialized')
+
+        self._other = other
+        self._operator = "and"
         return self
 
-class GetEntitySetFilterChainable(object):
+
+class GetEntitySetFilterChainable:
     """
     Example expressions
-        FirstName="Tim"
-        FirstName__contains="Tim"
+        FirstName='Tim'
+        FirstName__contains='Tim'
         Age__gt=56
         Age__gte=6
         Age__lt=78
         Age__lte=90
         Age__range=(5,9)
-        FirstName__in=["Tim", "Bob", "Sam"]
-        FirstName__startswith="Tim"
-        FirstName__endswith="mothy"
-        Addresses__Suburb="Chatswood"
-        Addresses__Suburb__contains="wood"
+        FirstName__in=['Tim', 'Bob', 'Sam']
+        FirstName__startswith='Tim'
+        FirstName__endswith='mothy'
+        Addresses__Suburb='Chatswood'
+        Addresses__Suburb__contains='wood'
     """
-    operators = ["startswith", "endswith", "lt", "lte", "gt", "gte", "contains", "range", "in", "length"]
-    def __init__(self, request, filter_expressions, exprs):
-        self.request = request
-        self.expressions = exprs
-        self.filter_expressions = filter_expressions
+
+    OPERATORS = [
+        'startswith',
+        'endswith',
+        'lt',
+        'lte',
+        'gt',
+        'gte',
+        'contains',
+        'range',
+        'in',
+        'length',
+        'eq'
+    ]
+
+    def __init__(self, entity_type, filter_expressions, exprs):
+        self._entity_type = entity_type
+        self._filter_expressions = filter_expressions
+        self._expressions = exprs
+
+    @property
+    def expressions(self):
+        """Get expressions as a list of tuples where the first item
+           is a property name with the operator suffix and the second item
+           is a left hand side value.
+        """
+
+        return self._expressions.items()
 
     def proprty_obj(self, name):
-        return self.request._entity_type.proprty(name)
+        """Returns a model property for a particular property"""
 
-    def process_query_objects(self):
+        return self._entity_type.proprty(name)
+
+    def _decode_and_combine_filter_expression(self, filter_expression):
+        filter_expressions = [self._decode_expression(expr, val) for expr, val in filter_expression.expressions]
+        return self._combine_expressions(filter_expressions)
+
+    def _process_query_objects(self):
+        """Processes FilterExpression objects to OData lookups"""
+
         filter_expressions = []
-        for q in self.filter_expressions:
-            lhs_expressions = []
-            rhs_expressions = []
-            for expr, val in q.expressions.items():
-                lhs_expressions.append(self.decode_expression(expr, val))
-            lhs_expressions = self.combine_expressions(lhs_expressions)
 
-            if q.other:
-                for expr, val in q.other.expressions.items():
-                    rhs_expressions.append(self.decode_expression(expr, val))
-                    rhs_expressions = self.combine_expressions(rhs_expressions)
-                
-                filter_expressions.append(f"({lhs_expressions}) {q.operator} ({rhs_expressions})")
+        for expr in self._filter_expressions:
+            lhs_expressions = self._decode_and_combine_filter_expression(expr)
+
+            if expr.other is not None:
+                rhs_expressions = self._decode_and_combine_filter_expression(expr.other)
+                filter_expressions.append(f'({lhs_expressions}) {expr.operator} ({rhs_expressions})')
             else:
-                filter_expressions.append(lhs_expression)
+                filter_expressions.append(lhs_expressions)
 
         return filter_expressions
 
-    def process_expressions(self):
-        filter_expressions = []
-        for expr, val in self.expressions.items():
-            filter_expressions.append(self.decode_expression(expr, val))
+    def _process_expressions(self):
+        filter_expressions = [self._decode_expression(expr, val) for expr, val in self.expressions]
 
-        filter_expressions.extend(self.process_query_objects())
+        filter_expressions.extend(self._process_query_objects())
+
         return filter_expressions
 
-    def decode_expression(self, expr, val):
-        properties = self.request._entity_type._properties.keys()
+    def _decode_expression(self, expr, val):
         field = None
         # field_heirarchy = []
-        operator = "eq"
-        exprs = expr.split("__")
+        operator = 'eq'
+        exprs = expr.split('__')
 
         for part in exprs:
-            if part in properties:
+            if self._entity_type.has_proprty(part):
                 field = part
                 # field_heirarchy.append(part)
-            elif part in self.__class__.operators:
+            elif part in self.__class__.OPERATORS:
                 operator = part
-
-        # field = "/".join(field_heirarchy)
+            else:
+                raise ValueError(f'"{part}" is not a valid property or operator')
+        # field = '/'.join(field_heirarchy)
 
         # target_field = self.proprty_obj(field_heirarchy[-1])
-        expression = self.build_expression(field, operator, val)
-        
+        expression = self._build_expression(field, operator, val)
+
         return expression
-    
-    def combine_expressions(self, expressions):
-        return " and ".join(expressions)
 
-    def build_expression(self, field_name, operator, value):
+    # pylint: disable=no-self-use
+    def _combine_expressions(self, expressions):
+        return ' and '.join(expressions)
+
+    # pylint: disable=too-many-return-statements, too-many-branches
+    def _build_expression(self, field_name, operator, value):
         target_field = self.proprty_obj(field_name)
-        if operator not in ["length", "in", "range"]:
-            value = target_field.to_literal(value)
-        if operator == "lt":
-            return f"{field_name} lt {value}"
-        elif operator == "lte":
-            return f"{field_name} le {value}"
-        elif operator == "gte":
-            return f"{field_name} ge {value}"
-        elif operator == "gt":
-            return f"{field_name} gt {value}"
-        elif operator == "startswith":
-            return f"startswith({field_name}, {value}) eq true"
-        elif operator == "endswith":
-            return f"endswith({field_name}, {value}) eq true"
-        elif operator == "length":
-            value = int(value)
-            return f"length({field_name}) eq {value}"
-        elif operator in ["contains"]:
-            return f"substringof({value}, {field_name}) eq true"
-        elif operator == "range":
-            if not (isinstance(value, tuple) or isinstance(value, list)):
-                raise TypeError("Range must be tuple or list not {}".format(type(value)))
-            if len(value) != 2:
-                raise ValueError("Only two items can be passed in a range.")
-            
-            x = target_field.to_literal(value[0])
-            y = target_field.to_literal(value[1]) 
-            return f"{field_name} gte {x} and {field_name} lte {y}"
-        elif operator == "in":
-            literal_values = []
-            for v in value:
-                val = target_field.to_literal(v)
-                literal_values.append(f"{field_name} eq {val}")
-            return " or ".join(literal_values)
-        elif operator == "eq":
-            return f"{field_name} eq {value}"
-        else:
-            raise ValueError(f"Invalid expression {operator}")
 
-    def as_filter_string(self):
-        expressions = self.process_expressions()
-        result = self.combine_expressions(expressions)
+        if operator not in ['length', 'in', 'range']:
+            value = target_field.to_literal(value)
+
+        if operator == 'lt':
+            return f'{field_name} lt {value}'
+
+        if operator == 'lte':
+            return f'{field_name} le {value}'
+
+        if operator == 'gte':
+            return f'{field_name} ge {value}'
+
+        if operator == 'gt':
+            return f'{field_name} gt {value}'
+
+        if operator == 'startswith':
+            return f'startswith({field_name}, {value}) eq true'
+
+        if operator == 'endswith':
+            return f'endswith({field_name}, {value}) eq true'
+
+        if operator == 'length':
+            value = int(value)
+            return f'length({field_name}) eq {value}'
+
+        if operator in ['contains']:
+            return f'substringof({value}, {field_name}) eq true'
+
+        if operator == 'range':
+            if not isinstance(value, (tuple, list)):
+                raise TypeError('Range must be tuple or list not {}'.format(type(value)))
+
+            if len(value) != 2:
+                raise ValueError('Only two items can be passed in a range.')
+
+            low_bound = target_field.to_literal(value[0])
+            high_bound = target_field.to_literal(value[1])
+
+            return f'{field_name} gte {low_bound} and {field_name} lte {high_bound}'
+
+        if operator == 'in':
+            literal_values = (f'{field_name} eq {target_field.to_literal(item)}' for item in value)
+            return ' or '.join(literal_values)
+
+        if operator == 'eq':
+            return f'{field_name} eq {value}'
+
+        raise ValueError(f'Invalid expression {operator}')
+
+    def __str__(self):
+        expressions = self._process_expressions()
+        result = self._combine_expressions(expressions)
         return quote(result)
+
 
 class GetEntitySetRequest(QueryRequest):
     """GET on EntitySet"""
@@ -1144,18 +1212,18 @@ class GetEntitySetRequest(QueryRequest):
         proprty = self._entity_type.proprty(name)
         return GetEntitySetFilter(proprty)
 
-    def set_filter(self, filter_val):
-        filter_text = self._filter + " and " if self._filter else ""
+    def _set_filter(self, filter_val):
+        filter_text = self._filter + ' and ' if self._filter else ''
         filter_text += filter_val
         self._filter = filter_text
 
     def filter(self, *args, **kwargs):
-        if len(args) and isinstance(args[0], str):
+        if args and len(args) == 1 and isinstance(args[0], str):
             self._filter = args[0]
-            return self
         else:
-            self.set_filter(GetEntitySetFilterChainable(self, args, kwargs).as_filter_string())
-            return self
+            self._set_filter(str(GetEntitySetFilterChainable(self._entity_type, args, kwargs)))
+
+        return self
 
 
 class EntitySetProxy:
