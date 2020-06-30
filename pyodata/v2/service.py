@@ -13,6 +13,7 @@ import random
 from email.parser import Parser
 from http.client import HTTPResponse
 from io import BytesIO
+from typing import NamedTuple
 
 try:
     # For Python 3.0 and later
@@ -233,6 +234,12 @@ class EntityKey:
         return self.to_key_string()
 
 
+class ResponseResult(NamedTuple):
+
+    response: object
+    result: object
+
+
 class ODataHttpRequest:
     """Deferred HTTP Request"""
 
@@ -300,8 +307,15 @@ class ODataHttpRequest:
 
            Sends the query-request to the OData service, returning a client-side Enumerable for
            subsequent in-memory operations.
+        """
 
-           Fetches HTTP response and returns processed result"""
+        return self.execute_full().result
+
+    def execute_full(self):
+        """Fetches HTTP response and returns instance of ResponseResult class
+           where the member response holds HTTP Library response and results
+           holds outcome of pyodata processing.
+        """
 
         url = urljoin(self._url, self.get_path())
         # pylint: disable=assignment-from-none
@@ -329,7 +343,7 @@ class ODataHttpRequest:
         except UnicodeDecodeError:
             self._logger.debug('  body: <cannot be decoded>')
 
-        return self._handler(response)
+        return ResponseResult(response, self._handler(response))
 
 
 class EntityGetRequest(ODataHttpRequest):
