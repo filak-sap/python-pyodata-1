@@ -735,123 +735,144 @@ class EntityProxy:
        named values), and links (references to other entities).
     """
 
+    class EntityProxyPimpl:
+
+        def __init__(self, service, entity_set, entity_type, proprties, entity_key, etag):
+            self.logger = logging.getLogger(LOGGER_NAME)
+            self.cache = dict()
+            self.modified = list()
+
+            self.service = service
+            self.entity_set = entity_set
+            self.entity_type = entity_type
+            self.key_props = entity_type.key_proprties
+            self.entity_key = entity_key
+            self.etag = etag
+
+            self.logger.debug('New entity proxy instance of type %s from properties: %s', entity_type.name, proprties)
+
+            # cache values of individual properties if provided
+            if proprties is not None:
+
+                etag_body = proprties.get('__metadata', dict()).get('etag', None)
+                if etag is not None and etag_body is not None and etag_body != etag:
+                    raise PyODataException('Etag from header does not match the Etag from response body')
+
+                if etag_body is not None:
+                    self.etag = etag_body
+
+                # first, cache values of direct properties
+                for type_proprty in self.entity_type.proprties():
+                    if type_proprty.name in proprties:
+                        if proprties[type_proprty.name] is not None:
+                            self.cache[type_proprty.name] = type_proprty.from_json(proprties[type_proprty.name])
+                        else:
+                            # null value is in literal form for now, convert it to python representation
+                            self.cache[type_proprty.name] = type_proprty.from_literal(type_proprty.typ.null_value)
+
+                # then, assign all navigation properties
+                for prop in self.entity_type.nav_proprties:
+
+                    if prop.name in proprties:
+
+                        # entity type of navigation property
+                        prop_etype = prop.to_role.entity_type
+
+                        # cache value according to multiplicity
+                        if prop.to_role.multiplicity in \
+                                [model.EndRole.MULTIPLICITY_ONE,
+                                 model.EndRole.MULTIPLICITY_ZERO_OR_ONE]:
+
+                            # cache None in case we receive nothing (null) instead of entity data
+                            if proprties[prop.name] is None:
+                                self.cache[prop.name] = None
+                            else:
+                                self.cache[prop.name] = EntityProxy(service, None, prop_etype, proprties[prop.name])
+
+                        elif prop.to_role.multiplicity == model.EndRole.MULTIPLICITY_ZERO_OR_MORE:
+                            # default value is empty array
+                            self.cache[prop.name] = []
+
+                            # if there are no entities available, received data consists of
+                            # metadata properties only.
+                            if 'results' in proprties[prop.name]:
+
+                                # available entities are serialized in results array
+                                for entity in proprties[prop.name]['results']:
+                                    self.cache[prop.name].append(EntityProxy(service, None, prop_etype, entity))
+                        else:
+                            raise PyODataException('Unknown multiplicity {0} of association role {1}'
+                                                   .format(prop.to_role.multiplicity, prop.to_role.name))
+
+            # build entity key if not provided
+            if self.entity_key is None:
+                # try to build key from available property values
+                try:
+                    # if key seems to be simple (consists of single property)
+                    if len(self.key_props) == 1:
+                        self.entity_key = EntityKey(entity_type, self.cache[self.key_props[0].name])
+                    else:
+                        # build complex key
+                        self.entity_key = EntityKey(entity_type, **self.cache)
+                except KeyError:
+                    pass
+                except PyODataException:
+                    pass
+
+
     # pylint: disable=too-many-branches,too-many-nested-blocks
 
     def __init__(self, service, entity_set, entity_type, proprties=None, entity_key=None, etag=None):
-        self._logger = logging.getLogger(LOGGER_NAME)
-        self._service = service
-        self._entity_set = entity_set
-        self._entity_type = entity_type
-        self._key_props = entity_type.key_proprties
-        self._cache = dict()
-        self._entity_key = entity_key
-        self._etag = etag
-
-        self._logger.debug('New entity proxy instance of type %s from properties: %s', entity_type.name, proprties)
-
-        # cache values of individual properties if provided
-        if proprties is not None:
-
-            etag_body = proprties.get('__metadata', dict()).get('etag', None)
-            if etag is not None and etag_body is not None and etag_body != etag:
-                raise PyODataException('Etag from header does not match the Etag from response body')
-
-            if etag_body is not None:
-                self._etag = etag_body
-
-            # first, cache values of direct properties
-            for type_proprty in self._entity_type.proprties():
-                if type_proprty.name in proprties:
-                    if proprties[type_proprty.name] is not None:
-                        self._cache[type_proprty.name] = type_proprty.from_json(proprties[type_proprty.name])
-                    else:
-                        # null value is in literal form for now, convert it to python representation
-                        self._cache[type_proprty.name] = type_proprty.from_literal(type_proprty.typ.null_value)
-
-            # then, assign all navigation properties
-            for prop in self._entity_type.nav_proprties:
-
-                if prop.name in proprties:
-
-                    # entity type of navigation property
-                    prop_etype = prop.to_role.entity_type
-
-                    # cache value according to multiplicity
-                    if prop.to_role.multiplicity in \
-                            [model.EndRole.MULTIPLICITY_ONE,
-                             model.EndRole.MULTIPLICITY_ZERO_OR_ONE]:
-
-                        # cache None in case we receive nothing (null) instead of entity data
-                        if proprties[prop.name] is None:
-                            self._cache[prop.name] = None
-                        else:
-                            self._cache[prop.name] = EntityProxy(service, None, prop_etype, proprties[prop.name])
-
-                    elif prop.to_role.multiplicity == model.EndRole.MULTIPLICITY_ZERO_OR_MORE:
-                        # default value is empty array
-                        self._cache[prop.name] = []
-
-                        # if there are no entities available, received data consists of
-                        # metadata properties only.
-                        if 'results' in proprties[prop.name]:
-
-                            # available entities are serialized in results array
-                            for entity in proprties[prop.name]['results']:
-                                self._cache[prop.name].append(EntityProxy(service, None, prop_etype, entity))
-                    else:
-                        raise PyODataException('Unknown multiplicity {0} of association role {1}'
-                                               .format(prop.to_role.multiplicity, prop.to_role.name))
-
-        # build entity key if not provided
-        if self._entity_key is None:
-            # try to build key from available property values
-            try:
-                # if key seems to be simple (consists of single property)
-                if len(self._key_props) == 1:
-                    self._entity_key = EntityKey(entity_type, self._cache[self._key_props[0].name])
-                else:
-                    # build complex key
-                    self._entity_key = EntityKey(entity_type, **self._cache)
-            except KeyError:
-                pass
-            except PyODataException:
-                pass
+        self._pimpl = EntityProxy.EntityProxyPimpl(service, entity_set, entity_type, proprties, entity_key, etag)
 
     def __repr__(self):
-        return self._entity_key.to_key_string()
+        return self._pimpl.entity_key.to_key_string()
 
     def __getattr__(self, attr):
+        if attr == '_pimpl':
+            return super().__getattr__(attr, value)
+
         try:
-            return self._cache[attr]
+            return self._pimpl.cache[attr]
         except KeyError:
             try:
                 value = self.get_proprty(attr).execute()
-                self._cache[attr] = value
+                self._pimpl.cache[attr] = value
                 return value
             except KeyError as ex:
                 raise AttributeError('EntityType {0} does not have Property {1}: {2}'
-                                     .format(self._entity_type.name, attr, str(ex)))
+                                     .format(self._pimpl.entity_type.name, attr, str(ex)))
+
+    def __setattr__(self, attr, value):
+        if attr[0] == '_':
+            super().__setattr__(attr, value)
+        elif self._pimpl.entity_type.has_proprty(attr):
+            self._pimpl.cache[attr] = value
+            self._pimpl.modified.append(attr)
+        else:
+            raise AttributeError(
+                f'EntityType {self._pimpl.entity_type.name} nor EntityProxy does not have property {attr}')
 
     def nav(self, nav_property):
         """Navigates to given navigation property and returns the EntitySetProxy"""
 
         # for now duplicated with simillar method in entity set proxy class
         try:
-            navigation_property = self._entity_type.nav_proprty(nav_property)
+            navigation_property = self._pimpl.entity_type.nav_proprty(nav_property)
         except KeyError:
             raise PyODataException('Navigation property {} is not declared in {} entity type'.format(
-                nav_property, self._entity_type))
+                nav_property, self._pimpl.entity_type))
 
         # Get entity set of navigation property
         association_info = navigation_property.association_info
-        association_set = self._service.schema.association_set_by_association(
+        association_set = self._pimpl.service.schema.association_set_by_association(
             association_info.name,
             association_info.namespace)
 
         navigation_entity_set = None
         for end in association_set.end_roles:
             if association_set.end_by_entity_set(end.entity_set_name).role == navigation_property.to_role.role:
-                navigation_entity_set = self._service.schema.entity_set(end.entity_set_name, association_info.namespace)
+                navigation_entity_set = self._pimpl.service.schema.entity_set(end.entity_set_name, association_info.namespace)
 
         if not navigation_entity_set:
             raise PyODataException('No association set for role {}'.format(navigation_property.to_role))
@@ -861,20 +882,20 @@ class EntityProxy:
             return NavEntityProxy(self, nav_property, navigation_entity_set.entity_type, {})
 
         return EntitySetProxy(
-            self._service,
-            self._service.schema.entity_set(navigation_entity_set.name),
+            self._pimpl.service,
+            self._pimpl.service.schema.entity_set(navigation_entity_set.name),
             nav_property,
-            self._entity_set.name + self._entity_key.to_key_string())
+            self._pimpl.entity_set.name + self._pimpl.entity_key.to_key_string())
 
     def get_path(self):
         """Returns this entity's relative path - e.g. EntitySet(KEY)"""
 
-        return self._entity_set._name + self._entity_key.to_key_string()  # pylint: disable=protected-access
+        return self._pimpl.entity_set._name + self._pimpl.entity_key.to_key_string()  # pylint: disable=protected-access
 
     def get_proprty(self, name, connection=None):
         """Returns value of the property"""
 
-        self._logger.info('Initiating property request for %s', name)
+        self._pimpl.logger.info('Initiating property request for %s', name)
 
         def proprty_get_handler(key, proprty, response):
             """Gets property value from HTTP Response"""
@@ -887,9 +908,9 @@ class EntityProxy:
             return proprty.from_json(data[proprty.name])
 
         path = urljoin(self.get_path(), name)
-        return self._service.http_get_odata(
+        return self._pimpl.service.http_get_odata(
             path,
-            partial(proprty_get_handler, path, self._entity_type.proprty(name)),
+            partial(proprty_get_handler, path, self._pimpl.entity_type.proprty(name)),
             connection=connection)
 
     def get_value(self, connection=None):
@@ -905,7 +926,7 @@ class EntityProxy:
             return response
 
         path = urljoin(self.get_path(), '/$value')
-        return self._service.http_get_odata(path,
+        return self._pimpl.service.http_get_odata(path,
                                             partial(value_get_handler, self.entity_key),
                                             connection=connection)
 
@@ -913,19 +934,19 @@ class EntityProxy:
     def entity_set(self):
         """Entity set related to this entity"""
 
-        return self._entity_set
+        return self._pimpl.entity_set
 
     @property
     def entity_key(self):
         """Key of entity"""
 
-        return self._entity_key
+        return self._pimpl.entity_key
 
     @property
     def url(self):
         """URL of the real entity"""
 
-        service_url = self._service.url.rstrip('/')
+        service_url = self._pimpl.service.url.rstrip('/')
         entity_path = self.get_path()
 
         return urljoin(service_url, entity_path)
@@ -933,12 +954,12 @@ class EntityProxy:
     @property
     def etag(self):
         """ETag generated by service"""
-        return self._etag
+        return self._pimpl.etag
 
     def equals(self, other):
         """Returns true if the self and the other contains the same data"""
         # pylint: disable=W0212
-        return self._cache == other._cache
+        return self._pimpl.cache == other._pimpl.cache
 
 
 class NavEntityProxy(EntityProxy):
@@ -946,7 +967,7 @@ class NavEntityProxy(EntityProxy):
 
     def __init__(self, parent_entity, prop_name, entity_type, entity):
         # pylint: disable=protected-access
-        super(NavEntityProxy, self).__init__(parent_entity._service, parent_entity._entity_set, entity_type, entity)
+        super(NavEntityProxy, self).__init__(parent_entity._pimpl.service, parent_entity._pimpl.entity_set, entity_type, entity)
 
         self._parent_entity = parent_entity
         self._prop_name = prop_name

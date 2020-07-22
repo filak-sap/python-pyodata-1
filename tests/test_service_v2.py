@@ -960,7 +960,7 @@ def test_navigation_1on1(service):
     assert isinstance(idpic_proxy, pyodata.v2.service.NavEntityProxy)
 
     assert idpic_proxy.entity_set._name == 'Cars'
-    assert idpic_proxy._entity_type.name == 'CarIDPic'
+    assert idpic_proxy._pimpl.entity_type.name == 'CarIDPic'
 
     assert idpic_proxy.CarName == 'Hadraplan'
     assert idpic_proxy.Content == 'DEADBEAF'
