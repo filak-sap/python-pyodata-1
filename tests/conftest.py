@@ -5,7 +5,7 @@ import pytest
 import jinja2
 
 from pyodata.config import Config
-from pyodata.version import ODATAVersion
+from pyodata.version import ODataVersion
 from pyodata.model.builder import MetadataBuilder
 from pyodata.v4 import ODataV4
 from pyodata.v2 import ODataV2
@@ -19,7 +19,7 @@ def _path_to_file(file_name):
 
 @pytest.fixture
 def template_builder():
-    def _builder(version: Type[ODATAVersion], **kwargs):
+    def _builder(version: Type[ODataVersion], **kwargs):
         if version == ODataV4:
             config = Config(ODataV4)
             template = 'v4/metadata.template.xml'

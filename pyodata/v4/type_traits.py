@@ -267,6 +267,7 @@ class GeoTypeTraits(TypTraits):
 
 class EnumTypTrait(TypTraits):
     """ EnumType type trait """
+
     def __init__(self, enum_type):
         self._enum_type = enum_type
 

@@ -1,7 +1,7 @@
 """ This module represents implementation of ODATA V4 """
 
 
-from pyodata.version import ODATAVersion, BuildFunctionDict, PrimitiveTypeList, BuildAnnotationDict
+from pyodata.version import ODataVersion, BuildFunctionDict, PrimitiveTypeList, BuildAnnotationDict
 from pyodata.model.elements import Typ, Schema, ComplexType, StructType, StructTypeProperty, EntityType
 from pyodata.model.build_functions import build_entity_type, build_complex_type, build_struct_type_property, \
     build_struct_type
@@ -15,7 +15,7 @@ from .type_traits import EdmDateTypTraits, GeoTypeTraits, EdmDoubleQuotesEncapsu
 from .service import Service  # noqa
 
 
-class ODataV4(ODATAVersion):
+class ODataV4(ODataVersion):
     """ Definition of OData V4 """
 
     @staticmethod

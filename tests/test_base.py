@@ -2,7 +2,7 @@ from typing import List
 import pytest
 
 from pyodata.config import Config
-from pyodata.version import ODATAVersion
+from pyodata.version import ODataVersion
 from pyodata.exceptions import PyODataParserError, PyODataModelError
 from pyodata.model.builder import MetadataBuilder
 from pyodata.model.elements import Schema, Types, Typ, build_element
@@ -12,7 +12,7 @@ from pyodata.v2 import ODataV2
 def test_build_element():
     """Test FromEtreeMixin class"""
 
-    class EmptyODATA(ODATAVersion):
+    class EmptyODATA(ODataVersion):
         @staticmethod
         def build_functions():
             return {}
@@ -31,7 +31,7 @@ def test_build_element():
 def test_supported_primitive_types():
     """Test handling of unsupported primitive types class"""
 
-    class EmptyODATA(ODATAVersion):
+    class EmptyODATA(ODataVersion):
         @staticmethod
         def primitive_types() -> List[Typ]:
             return [
@@ -50,7 +50,7 @@ def test_supported_primitive_types():
 
 def test_odata_version_statelessness():
 
-    class EmptyODATA(ODATAVersion):
+    class EmptyODATA(ODataVersion):
         @staticmethod
         def build_functions():
             return {}
@@ -66,14 +66,14 @@ def test_odata_version_statelessness():
     with pytest.raises(RuntimeError) as typ_ex_info:
         EmptyODATA()
 
-    assert typ_ex_info.value.args[0] == 'ODATAVersion and its children are intentionally stateless, ' \
+    assert typ_ex_info.value.args[0] == 'ODataVersion and its children are intentionally stateless, ' \
                                         'therefore you can not create instance of them'
 
 
 def test_types_repository_separation():
     ODataV2.Types = dict()
 
-    class TestODATA(ODATAVersion):
+    class TestODATA(ODataVersion):
         @staticmethod
         def primitive_types() -> List['Typ']:
             return [

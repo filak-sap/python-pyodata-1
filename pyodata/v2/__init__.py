@@ -3,7 +3,7 @@
 import logging
 
 
-from pyodata.version import ODATAVersion, BuildFunctionDict, PrimitiveTypeList, BuildAnnotationDict
+from pyodata.version import ODataVersion, BuildFunctionDict, PrimitiveTypeList, BuildAnnotationDict
 from pyodata.model.elements import StructTypeProperty, StructType, ComplexType, EntityType, EntitySet, ValueHelper, \
     ValueHelperParameter, FunctionImport, Typ
 from pyodata.model.build_functions import build_value_helper, build_entity_type, build_complex_type, \
@@ -23,7 +23,7 @@ def modlog():
     return logging.getLogger("v2")
 
 
-class ODataV2(ODATAVersion):
+class ODataV2(ODataVersion):
     """ Definition of OData V2 """
 
     @staticmethod

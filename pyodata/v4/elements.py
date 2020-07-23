@@ -10,6 +10,7 @@ from pyodata.v4.type_traits import EnumTypTrait
 
 class NullProperty:
     """ Defines fallback class when parser is unable to process property defined in xml """
+
     def __init__(self, name):
         self.name = name
 
@@ -25,6 +26,7 @@ class ReferentialConstraint:
     """ Defines a edm.ReferentialConstraint
         http://docs.oasis-open.org/odata/odata/v4.0/errata03/os/complete/part3-csdl/odata-v4.0-errata03-os-part3-csdl-complete.html#_Toc453752543
     """
+
     def __init__(self, proprty_name: str, referenced_proprty_name: str):
         self._proprty_name = proprty_name
         self._referenced_proprty_name = referenced_proprty_name
@@ -171,6 +173,7 @@ class Unit(Annotation):
 
 class EnumMember:
     """ Represents individual enum values """
+
     def __init__(self, parent, name, value):
         self._parent = parent
         self._name = name
@@ -194,6 +197,7 @@ class EnumMember:
 
 class EnumType(Identifier):
     """ Represents enum type """
+
     def __init__(self, name, is_flags, underlying_type, namespace):
         super(EnumType, self).__init__(name)
         self._member = list()

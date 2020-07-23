@@ -6,7 +6,7 @@ import pyodata.version
 
 
 CustomErrorPolicies = Dict[ParserError, ErrorPolicyType]
-ODataVersion = Type[pyodata.version.ODATAVersion]
+ODataVersion = Type[pyodata.version.ODataVersion]
 Namespaces = Dict[str, str]
 Aliases = Dict[str, str]
 
@@ -66,7 +66,7 @@ class Config:
         self._custom_error_policy = None
         self._default_error_policy = policy
 
-    def set_custom_error_policy(self, policies: Dict[ParserError, ErrorPolicyType]):
+    def set_custom_error_policy(self, policies: CustomErrorPolicies):
         """ Sets custom error policy. It should be called only after setting default error policy, otherwise
             it has no effect. See implementation of "set_default_error_policy" for more details.
         """
